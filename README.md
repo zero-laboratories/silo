@@ -39,6 +39,11 @@ npm install -g @zero-lab/silo --registry https://silo-production-96d9.up.railway
 pnpm add -g @zero-lab/silo --registry https://silo-production-96d9.up.railway.app
 ```
 
+If you want to use Silo in your app via a project's `.npmrc`:
+```bash
+echo '@zero-lab:registry=https://silo-production-96d9.up.railway.app' >> .npmrc
+```
+
 ## Registry
 
 Users should add this to `~/.npmrc`:
