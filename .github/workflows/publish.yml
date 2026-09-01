@@ -24,13 +24,13 @@ jobs:
 
       - name: Publish
         run: |
-          npm publish --registry https://silo-production-487a.up.railway.app --access public
+          npm publish --registry https://silo-production-96d9.up.railway.app --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.VERDACCIO_TOKEN }}
 
       - name: Trim old versions (keep latest 10)
         run: |
-          REGISTRY="https://silo-production-487a.up.railway.app"
+          REGISTRY="https://silo-production-96d9.up.railway.app"
           PKG="@zero-lab/silo"
           TOKEN="${{ secrets.VERDACCIO_TOKEN }}"
 

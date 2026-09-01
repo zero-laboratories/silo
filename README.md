@@ -34,9 +34,9 @@ It's built with Ink (React for terminals) and TypeScript. The whole thing should
 ## Install
 
 ```bash
-npm install -g @zero-lab/silo --registry https://silo-production-487a.up.railway.app
+npm install -g @zero-lab/silo --registry https://silo-production-96d9.up.railway.app
 # or
-pnpm add -g @zero-lab/silo --registry https://silo-production-487a.up.railway.app
+pnpm add -g @zero-lab/silo --registry https://silo-production-96d9.up.railway.app
 ```
 
 ## Registry
@@ -44,7 +44,7 @@ pnpm add -g @zero-lab/silo --registry https://silo-production-487a.up.railway.ap
 Users should add this to `~/.npmrc`:
 
 ```
-@zero-lab:registry=https://silo-production-487a.up.railway.app
+@zero-lab:registry=https://silo-production-96d9.up.railway.app
 ```
 
 ## Getting started

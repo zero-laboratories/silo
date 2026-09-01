@@ -35,7 +35,7 @@
   "publishConfig": {
     "access": "public",
     "provenance": true,
-    "registry": "https://silo-production-487a.up.railway.app"
+    "registry": "https://silo-production-96d9.up.railway.app"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
