@@ -16,7 +16,8 @@ const options = {
   banner: {
     js: '#!/usr/bin/env node',
   },
-  sourcemap: false,
+  sourcemap: 'linked',
+  sourcesContent: true,
   logLevel: 'info',
 };
 
