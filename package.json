@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "description": "A minimal, model-agnostic chat app for the terminal with a BYOK philosophy.",
   "type": "module",
-  "packageManager": "pnpm@11.3.0",
+  "packageManager": "pnpm@11.25.0",
   "bin": {
     "silo": "./dist/index.js"
   },
