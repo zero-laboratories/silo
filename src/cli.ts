@@ -58,7 +58,7 @@ function runChat(modelName?: string, resume?: boolean) {
     const store = new Store();
     const manager = new ChatManager(store, provider, model, { resume });
 
-    render(React.createElement(App, { manager }));
+    render(React.createElement(App, { manager }), { alternateScreen: true });
   } catch (err) {
     console.error(toUserError(err));
     process.exit(1);

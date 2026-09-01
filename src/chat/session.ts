@@ -47,6 +47,10 @@ export class ChatManager {
     return this.current;
   }
 
+  get label(): string {
+    return `${this.config.provider}/${this.config.model}`;
+  }
+
   async *send(userMessage: string): AsyncGenerator<StreamChunk> {
     const savedUser: ChatMessage = this.store.appendMessage(this.current.id, {
       role: 'user',

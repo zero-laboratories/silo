@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
-import { Box, Text, useInput } from 'ink';
+import { Box, Text, useInput, useWindowSize } from 'ink';
+import { Logo } from './Logo.js';
 import type { ChatManager } from '../../chat/session.js';
 import type { ChatMessage } from '../../chat/types.js';
 
@@ -8,6 +9,7 @@ interface AppProps {
 }
 
 export function App({ manager }: AppProps) {
+  const { rows } = useWindowSize();
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
@@ -75,10 +77,44 @@ export function App({ manager }: AppProps) {
     }
   }
 
+  const hasChat = messages.length > 0 || error !== null;
+
   return (
-    <Box flexDirection="column" height="100%">
-      <Layout messages={messages} streaming={streaming} isStreaming={isStreaming} error={error} />
-      <InputBox value={input} />
+    <Box flexDirection="column" height={rows}>
+      {hasChat && (
+        <Box borderStyle="single" borderColor="gray" paddingX={1}>
+          <Text color="cyan" bold>SILO</Text>
+          <Text color="gray"> · </Text>
+          <Text>{manager.label}</Text>
+          {isStreaming && <Text color="green"> · typing…</Text>}
+        </Box>
+      )}
+      <Box flexDirection="column" flexGrow={1} justifyContent="flex-end" alignItems="center">
+        {messages.length === 0 && !isStreaming && !streaming && !error && (
+          <Box
+            flexDirection="column"
+            alignItems="center"
+            justifyContent="center"
+            flexGrow={1}
+          >
+            <Logo />
+            <Text> </Text>
+          </Box>
+        )}
+        {(messages.length > 0 || isStreaming || streaming || error) && (
+          <Box flexDirection="column" flexGrow={1}>
+            <Layout
+              messages={messages}
+              streaming={streaming}
+              isStreaming={isStreaming}
+              error={error}
+            />
+          </Box>
+        )}
+      </Box>
+      <Box alignItems="center" flexDirection="column">
+        <InputBox value={input} isStreaming={isStreaming} />
+      </Box>
     </Box>
   );
 }
@@ -95,7 +131,7 @@ function Layout({
   error: string | null;
 }) {
   return (
-    <Box flexDirection="column" flexGrow={1}>
+    <Box flexDirection="column" flexGrow={1} width="100%" paddingX={1}>
       {messages.map((msg) => (
         <MessageView key={msg.id} message={msg} />
       ))}
@@ -116,11 +152,23 @@ function MessageView({ message }: { message: ChatMessage }) {
   );
 }
 
-function InputBox({ value }: { value: string }) {
+function InputBox({ value, isStreaming }: { value: string; isStreaming: boolean }) {
   return (
-    <Box>
-      <Text color="gray">&gt; </Text>
-      <Text>{value}</Text>
+    <Box
+      borderStyle="single"
+      borderColor={isStreaming ? 'yellow' : 'gray'}
+      width="50%"
+      paddingX={1}
+    >
+      <Text color={isStreaming ? 'yellow' : 'cyan'}>{isStreaming ? '* ' : '> '}</Text>
+      {value.length > 0 ? (
+        <>
+          <Text>{value}</Text>
+          <Text inverse> </Text>
+        </>
+      ) : (
+        <Text dimColor>Ask anything...</Text>
+      )}
     </Box>
   );
 }
