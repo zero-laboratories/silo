@@ -1,0 +1,53 @@
+name: Publish
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+
+      - name: Publish
+        run: |
+          npm publish --registry https://silo-production-487a.up.railway.app --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.VERDACCIO_TOKEN }}
+
+      - name: Trim old versions (keep latest 10)
+        run: |
+          REGISTRY="https://silo-production-487a.up.railway.app"
+          PKG="@zero-lab/silo"
+          TOKEN="${{ secrets.VERDACCIO_TOKEN }}"
+
+          # Get all versions
+          VERSIONS=$(curl -s "$REGISTRY/$PKG" -H "Authorization: Bearer $TOKEN" | node -e "
+            const d = JSON.parse(require('fs').readFileSync(0));
+            const vs = Object.keys(d.versions).sort((a,b) =>
+              require('semver').compare(a,b)
+            );
+            const toRemove = vs.slice(0, -10);
+            console.log(toRemove.join('\\n'));
+          ")
+
+          # Unpublish old versions
+          while IFS= read -r ver; do
+            [ -z "$ver" ] && continue
+            echo "Unpublishing $ver"
+            curl -s -X DELETE "$REGISTRY/$PKG/-/$ver" \
+              -H "Authorization: Bearer $TOKEN"
+          done <<< "$VERSIONS"

@@ -34,7 +34,8 @@
   },
   "publishConfig": {
     "access": "public",
-    "provenance": true
+    "provenance": true,
+    "registry": "https://silo-production-487a.up.railway.app"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
