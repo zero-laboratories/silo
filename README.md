@@ -134,7 +134,7 @@ Everything is stored in a SQLite database at `~/.local/share/silo/silo.db`. Your
 ## Development
 
 ```bash
-git clone https://github.com/zero-labs/silo.git
+git clone https://github.com/zeropbc/silo.git
 cd silo
 pnpm install
 pnpm dev

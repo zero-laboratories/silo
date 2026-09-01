@@ -39,7 +39,7 @@ export class OpenRouterProvider implements LLMProvider {
         headers: {
           'content-type': 'application/json',
           authorization: `Bearer ${apiKey}`,
-          'HTTP-Referer': 'https://github.com/zero-labs/silo',
+          'HTTP-Referer': 'https://github.com/zeropbc/silo',
           'X-Title': 'Silo',
         },
         body: JSON.stringify({
