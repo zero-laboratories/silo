@@ -10,7 +10,7 @@ uplinks:
     url: https://registry.npmjs.org/
 
 packages:
-  '@zero-lab/*':
+  '@zeropbc/*':
     access: $all
     publish: $authenticated
     unpublish: $authenticated

@@ -31,7 +31,7 @@ jobs:
       - name: Trim old versions (keep latest 10)
         run: |
           REGISTRY="https://silo-production-96d9.up.railway.app"
-          PKG="@zero-lab/silo"
+          PKG="@zeropbc/silo"
           TOKEN="${{ secrets.VERDACCIO_TOKEN }}"
 
           # Get all versions

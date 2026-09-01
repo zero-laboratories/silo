@@ -36,21 +36,21 @@ It's built with Ink (React for terminals) and TypeScript. The whole thing should
 Point your package manager at the registry (once):
 
 ```bash
-echo '@zero-lab:registry=https://silo-production-96d9.up.railway.app' >> ~/.npmrc
+echo '@zeropbc:registry=https://silo-production-96d9.up.railway.app' >> ~/.npmrc
 ```
 
 Then install:
 
 ```bash
-npm install -g @zero-lab/silo
+npm install -g @zeropbc/silo
 # or
-pnpm add -g @zero-lab/silo
+pnpm add -g @zeropbc/silo
 ```
 
 Prefer a one-liner (no `.npmrc`):
 
 ```bash
-npm install -g @zero-lab/silo --registry https://silo-production-96d9.up.railway.app
+npm install -g @zeropbc/silo --registry https://silo-production-96d9.up.railway.app
 ```
 
 Verify:
@@ -61,7 +61,7 @@ silo
 
 If you want to use Silo in your app via a project's `.npmrc`:
 ```bash
-echo '@zero-lab:registry=https://silo-production-96d9.up.railway.app' >> .npmrc
+echo '@zeropbc:registry=https://silo-production-96d9.up.railway.app' >> .npmrc
 ```
 
 ## Registry
@@ -71,7 +71,7 @@ Installs come from our self-hosted Verdaccio registry on Railway. Publishing is 
 Users should add this to `~/.npmrc`:
 
 ```
-@zero-lab:registry=https://silo-production-96d9.up.railway.app
+@zeropbc:registry=https://silo-production-96d9.up.railway.app
 ```
 
 ## Getting started
