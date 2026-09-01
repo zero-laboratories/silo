@@ -22,6 +22,7 @@ jobs:
 
       - name: Publish
         run: |
+          echo "//silo-production-96d9.up.railway.app/:_authToken=$NODE_AUTH_TOKEN" >> ~/.npmrc
           npm publish --registry https://silo-production-96d9.up.railway.app --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.VERDACCIO_TOKEN }}
