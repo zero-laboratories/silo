@@ -1,10 +1,10 @@
 
 # Silo
 
-> ## ⚠️ ALPHA — DOES NOT WORK YET
+> ## ALPHA — ROUGH AROUND THE EDGES
 >
-> This is an early, in-progress scaffold. Chat is not functional yet.
-> Expect things to break. Nothing here is stable.
+> This is an early, in-progress build. Chat works, but expect rough
+> edges, missing features, and breaking changes. Nothing is stable yet.
 
 ```
  ███████╗  ██╗ ██╗       ██████╗

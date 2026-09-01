@@ -19,8 +19,9 @@ export function buildCli(): typeof program {
     .command('chat')
     .description('Open the interactive chat UI')
     .option('-m, --model <name>', 'model to use (from config)')
-    .action((opts: { model?: string }) => {
-      runChat(opts.model);
+    .option('-r, --resume', 'resume the most recent conversation')
+    .action((opts: { model?: string; resume?: boolean }) => {
+      runChat(opts.model, opts.resume);
     });
 
   program
@@ -43,7 +44,7 @@ export function buildCli(): typeof program {
   return program;
 }
 
-function runChat(modelName?: string) {
+function runChat(modelName?: string, resume?: boolean) {
   try {
     const config = loadConfig();
     const name = modelName ?? config.general.default_model;
@@ -55,7 +56,7 @@ function runChat(modelName?: string) {
 
     const provider = providerFor(model.provider);
     const store = new Store();
-    const manager = new ChatManager(store, provider, model);
+    const manager = new ChatManager(store, provider, model, { resume });
 
     render(React.createElement(App, { manager }));
   } catch (err) {

@@ -50,6 +50,16 @@ export function App({ manager }: AppProps) {
     setStreaming('');
     setError(null);
 
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `pending-${Date.now()}`,
+        role: 'user',
+        content: text,
+        timestamp: new Date(),
+      },
+    ]);
+
     try {
       for await (const chunk of manager.send(text)) {
         if (chunk.type === 'content' && chunk.content) {

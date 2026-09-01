@@ -4,26 +4,43 @@ import type { ModelConfig } from '../config/type.js';
 import type { ChatMessage, ChatSession } from './types.js';
 import { ContextManager, estimateTokens } from './context.js';
 
+export interface ChatManagerOptions {
+  resume?: boolean;
+}
+
 export class ChatManager {
   private store: Store;
   private provider: LLMProvider;
   private config: ModelConfig;
   private current: ChatSession;
 
-  constructor(store: Store, provider: LLMProvider, config: ModelConfig) {
+  constructor(
+    store: Store,
+    provider: LLMProvider,
+    config: ModelConfig,
+    opts: ChatManagerOptions = {},
+  ) {
     this.store = store;
     this.provider = provider;
     this.config = config;
 
-    const existing = store.listChats()[0];
-    this.current =
-      existing ??
-      store.createChat({
+    if (opts.resume) {
+      this.current =
+        store.listChats()[0] ??
+        store.createChat({
+          model: config.model,
+          provider: config.provider,
+          title: undefined,
+          systemPrompt: '',
+        });
+    } else {
+      this.current = store.createChat({
         model: config.model,
         provider: config.provider,
         title: undefined,
         systemPrompt: '',
       });
+    }
   }
 
   get session(): ChatSession {

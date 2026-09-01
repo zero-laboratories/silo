@@ -1,7 +1,14 @@
 import type { LLMProvider, StreamChunk } from './types.js';
 import { apiKeyFor } from './types.js';
+import { stream } from './stream.js';
 import type { ChatMessage } from '../chat/types.js';
 import type { ModelConfig } from '../config/type.js';
+
+interface AnthropicEvent {
+  type?: string;
+  delta?: { type?: string; text?: string };
+  error?: { message?: string };
+}
 
 export class AnthropicProvider implements LLMProvider {
   getName(): string {
@@ -47,45 +54,16 @@ export class AnthropicProvider implements LLMProvider {
       signal,
     });
 
-    if (!response.ok || !response.body) {
-      const text = await response.text();
-      throw new Error(`Anthropic API error (${response.status}): ${text}`);
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed.startsWith('data:')) continue;
-          const data = trimmed.slice(5).trim();
-          if (data === '[DONE]') continue;
-
-          try {
-            const parsed = JSON.parse(data);
-            const delta = parsed.delta?.text;
-            if (typeof delta === 'string' && delta.length > 0) {
-              yield { type: 'content', content: delta };
-            }
-          } catch {
-            // Ignore non-JSON keepalive lines.
-          }
+    yield* stream<AnthropicEvent>(response, 'Anthropic', {
+      onEvent: (parsed) => {
+        if (parsed.type === 'error') {
+          throw new Error(parsed.error?.message ?? 'Anthropic stream error');
         }
-      }
-    } finally {
-      reader.releaseLock();
-    }
-
-    yield { type: 'done' };
+        if (parsed.type === 'content_block_delta' && parsed.delta?.type === 'text_delta') {
+          return parsed.delta.text;
+        }
+        return undefined;
+      },
+    });
   }
 }
