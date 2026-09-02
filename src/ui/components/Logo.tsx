@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Text } from 'ink';
+import { BOLD } from '../styles.js';
 
 const LOGO = [
   ' ███████╗  ██╗ ██╗       ██████╗',
@@ -12,12 +12,12 @@ const LOGO = [
 
 export function Logo() {
   return (
-    <Box flexDirection="column">
+    <box flexDirection="column">
       {LOGO.map((line, i) => (
-        <Text key={i} color="cyan">
+        <text key={i} fg="cyan" attributes={BOLD}>
           {line}
-        </Text>
+        </text>
       ))}
-    </Box>
+    </box>
   );
 }

@@ -4,6 +4,9 @@
   "description": "A minimal, model-agnostic chat app for the terminal with a BYOK philosophy.",
   "type": "module",
   "packageManager": "pnpm@11.25.0",
+  "engines": {
+    "node": ">=26.4.0"
+  },
   "bin": {
     "silo": "./dist/index.js"
   },
@@ -14,7 +17,7 @@
     "build": "node esbuild.config.js",
     "dev": "node esbuild.config.js --watch",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "NODE_OPTIONS=--experimental-ffi vitest run",
     "lint": "eslint \"src/**/*.{ts,tsx}\""
   },
   "keywords": [
@@ -38,9 +41,10 @@
     "registry": "https://silo-production-96d9.up.railway.app"
   },
   "dependencies": {
+    "@opentui/core": "^0.5.10",
+    "@opentui/react": "^0.5.10",
     "better-sqlite3": "^13.0.3",
     "commander": "^15.0.0",
-    "ink": "^7.1.1",
     "react": "^19.2.8",
     "smol-toml": "^1.8.0"
   },

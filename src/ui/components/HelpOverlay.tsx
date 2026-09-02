@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Text } from 'ink';
+import { BOLD, DIM } from '../styles.js';
 
 const shortcuts: Array<[string, string, boolean]> = [
   ['Chat', '', true],
@@ -9,6 +9,7 @@ const shortcuts: Array<[string, string, boolean]> = [
   ['Ctrl+G', 'Open settings', false],
   ['Ctrl+F', 'Search current chat', false],
   ['Ctrl+C', 'Stop streaming', false],
+  ['Ctrl+X', 'Quit Silo', false],
   ['e', 'Edit / delete a message', false],
   ['?', 'Show this help', false],
   ['Sidebar', '', true],
@@ -27,47 +28,47 @@ const shortcuts: Array<[string, string, boolean]> = [
 
 export function HelpOverlay() {
   return (
-    <Box
+    <box
       flexDirection="column"
       alignItems="center"
       justifyContent="center"
       flexGrow={1}
     >
-      <Box
+      <box
         borderStyle="double"
         borderColor="cyan"
         flexDirection="column"
         paddingX={1}
         width={50}
       >
-        <Box justifyContent="center">
-          <Text color="cyan" bold>
+        <box justifyContent="center">
+          <text fg="cyan" attributes={BOLD}>
             Keyboard Shortcuts
-          </Text>
-        </Box>
-        <Text> </Text>
+          </text>
+        </box>
+        <text> </text>
         {shortcuts.map(([key, desc, isHeader], i) => {
           if (isHeader) {
             return (
-              <Text key={i} color="cyan" bold>
+              <text key={i} fg="cyan" attributes={BOLD}>
                 {key}
-              </Text>
+              </text>
             );
           }
           return (
-            <Text key={i}>
-              <Text color="yellow" bold>
+            <text key={i}>
+              <span fg="yellow" attributes={BOLD}>
                 {key.padEnd(10)}
-              </Text>
-              <Text>{desc}</Text>
-            </Text>
+              </span>
+              <span>{desc}</span>
+            </text>
           );
         })}
-        <Text> </Text>
-        <Box justifyContent="center">
-          <Text dimColor>Press ? or Esc to close</Text>
-        </Box>
-      </Box>
-    </Box>
+        <text> </text>
+        <box justifyContent="center">
+          <text attributes={DIM}>Press ? or Esc to close</text>
+        </box>
+      </box>
+    </box>
   );
 }

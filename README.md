@@ -6,6 +6,7 @@
 > Feature-complete against the roadmap through v0.6 and heading into pre-beta
 > stability. Chat, search, tagging, per-chat system prompts, and message
 > editing all work. Expect minor rough edges as we harden things toward v1.
+> The UI now runs on OpenTUI (native terminal bindings) instead of Ink.
 
 ```
  ███████╗  ██╗ ██╗       ██████╗
@@ -22,7 +23,7 @@ A CLI chat app for Linux. Talk to multiple AI providers from your terminal, own 
 
 Silo is a minimal chat client that lives in your terminal. It connects to Claude, OpenAI, Gemini, or OpenRouter — you pick whichever works for you (or switch between them). Conversations are stored locally in SQLite, config lives in TOML, and nothing leaves your machine unless you send a message.
 
-It's built with Ink (React for terminals) and TypeScript. The whole thing should feel fast and intentional, not like another Electron app pretending to be a terminal tool.
+It's built with OpenTUI (native terminal bindings with React) and TypeScript. The whole thing should feel fast and intentional, not like another Electron app pretending to be a terminal tool.
 
 ## Philosophy
 
@@ -141,7 +142,7 @@ pnpm install
 pnpm dev
 ```
 
-Build with `pnpm build`. Tests live in `tests/`.
+Build with `pnpm build`. Tests live in `tests/`. Requires **Node.js 26.4+** (OpenTUI uses native FFI; the CLI self-bootstraps the `--experimental-ffi` flag, so no manual node flags are needed).
 
 ## License
 

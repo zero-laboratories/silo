@@ -26,7 +26,8 @@
 - Release notes automation
 
 ## V0.8 - part of V1-beta
-- Work mode UI
+- Foundation [Done]: OpenTUI refactor (replaces Ink)
+- Work mode UI (markdown/code/scroll rendering via OpenTUI)
 - Cowork context handling
 - Mode switching (Chat ↔ Work)
 - Beta testing framework
