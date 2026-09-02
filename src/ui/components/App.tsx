@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { useKeyboard } from '@opentui/react';
-import type { KeyEvent } from '@opentui/core';
+import type { ParsedKey } from '@opentui/core';
 import { Logo } from './Logo.js';
 import { Sidebar } from './Sidebar.js';
 import { Settings } from './Settings.js';
@@ -19,7 +19,7 @@ interface AppProps {
   onRequestClose?: () => void;
 }
 
-function inputCharOf(e: KeyEvent): string {
+export function inputCharOf(e: Pick<ParsedKey, 'name' | 'sequence'>): string {
   return e.name.length === 1 ? e.sequence : '';
 }
 

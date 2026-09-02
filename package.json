@@ -17,7 +17,7 @@
     "build": "node esbuild.config.js",
     "dev": "node esbuild.config.js --watch",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "NODE_OPTIONS=--experimental-ffi vitest run",
     "lint": "eslint \"src/**/*.{ts,tsx}\""
   },
   "keywords": [
