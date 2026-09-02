@@ -19,7 +19,7 @@
 - Custom system prompts per chat
 - Message editing/deletion
 
-## V0.7: Pre-beta stability
+## V0.7: Pre-beta stability [Done]
 - Full test coverage
 - Performance optimization
 - Documentation polish
