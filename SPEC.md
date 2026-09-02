@@ -1,3 +1,5 @@
+# THIS IS OUTDATED. THIS WILL BE UPDATED SOON.
+
 # Silo Architecture Specification
 
 **Project:** Silo (S1L0)  
