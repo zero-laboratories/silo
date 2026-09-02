@@ -663,19 +663,19 @@ silo/
 - [ ] Provider configuration panel
 
 ### Phase 3: Polish (Week 3)
-- [ ] Streaming optimization
-- [ ] Context windowing refinement
-- [ ] UI/UX tweaks
-- [ ] Documentation
-- [ ] Release build + npm publish
+- [x] Streaming optimization
+- [x] Context windowing refinement
+- [x] UI/UX tweaks
+- [x] Documentation
+- [x] Release build + npm publish
 
-### Phase 4: V0.1 Features (Post-MVP)
+### Phase 4: V1 Features (Shipping through v0.6)
 - [ ] Chat export (Markdown, JSON)
-- [ ] Search within chats
-- [ ] Chat tagging/organizing
-- [ ] Custom system prompts per chat
-- [ ] Keyboard shortcuts guide
-- [ ] Theme customization
+- [x] Search within chats
+- [x] Chat tagging/organizing
+- [x] Custom system prompts per chat
+- [x] Keyboard shortcuts guide
+- [x] Theme customization
 
 ---
 
