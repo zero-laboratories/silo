@@ -28,12 +28,22 @@ Always run `pnpm typecheck` and `pnpm lint` before committing. If either fails, 
 - Database schema changes go in `src/storage/schema.ts`.
 - Config format is TOML (`~/.config/silo/config.toml`). Use `smol-toml` for parsing.
 
+### OpenTUI UI conventions (replaces Ink)
+
+- The UI uses **OpenTUI** (`@opentui/core` + `@opentui/react`), not Ink. `tsconfig.json` and esbuild use `jsxImportSource: "@opentui/react"`.
+- JSX uses **kebab-case intrinsic elements**: `<box>`, `<text>`, `<span>`, `<code>`, `<markdown>`, `<input>`, `<scrollbox>`. Do NOT import `Box`/`Text` from anything.
+- `<text>` colors use **`fg`/`bg`** (NOT Ink's `color`). Bold/dim/inverse use **`attributes`** (an int bitmask) via `createTextAttributes({ bold, dim, inverse })` from `@opentui/core`; semantic constants live in `src/ui/styles.ts` (`BOLD`, `DIM`, `INVERSE`, `BOLD_INVERSE`).
+- **Nested `<text>` inside `<text>` is an error** ("TextNodeRenderable only accepts strings…"). Use `<span>` for inline styled runs inside a `<text>`.
+- Input is **`useKeyboard((e) => {})`** (replaces Ink `useInput`). `e` is a `ParsedKey`: use `e.name === 'return' | 'escape' | 'up' | 'down'`, `e.name === 'backspace' || 'delete'`, `e.ctrl`, and `inputCharOf(e)` (`e.name.length === 1 ? e.sequence : ''`) for typed characters.
+- The entry (`src/cli.ts`) uses async `createCliRenderer()` + `createRoot(renderer).render(...)`; clean up via `renderer.destroy()`. Quit key is **Ctrl+X** (`onRequestClose` prop).
+- Tests render components headlessly with `@opentui/react/test-utils`'s `testRender` + `waitForFrame`; vitest must run with `NODE_OPTIONS=--experimental-ffi` (the `test` script does this).
+
 ## Testing instructions
 
 - Tests live in `tests/` mirroring the `src/` structure.
 - Unit tests in `tests/unit/`, integration tests in `tests/integration/`.
-- Run the full suite: `pnpm test`.
-- Run a single test file: `pnpm vitest run tests/unit/path/to/file.test.ts`.
+- Run the full suite: `pnpm test` (sets `NODE_OPTIONS=--experimental-ffi`).
+- Run a single test file: `pnpm vitest run tests/unit/path/to/file.test.ts` (prepend `NODE_OPTIONS=--experimental-ffi` if it exercises OpenTUI).
 - Run tests matching a name: `pnpm vitest run -t "test name here"`.
 - Fix any test or type errors before committing.
 - Add or update tests for code you change.
