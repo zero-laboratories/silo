@@ -7,7 +7,7 @@
 - Message formatting edge cases
 - Config validation
 
-## V0.5: UX refinement
+## V0.5: UX refinement [Done]
 - Keyboard shortcuts guide (? key shows help)
 - Chat title auto-generation
 - Better empty state messaging
