@@ -38,6 +38,7 @@ export function Sidebar({ chats, activeId, selected }: SidebarProps) {
       {chats.map((chat, i) => {
         const isActive = chat.id === activeId;
         const isSelected = i === selected;
+        const tags = chat.tags ?? [];
         return (
           <Text
             key={chat.id}
@@ -47,11 +48,12 @@ export function Sidebar({ chats, activeId, selected }: SidebarProps) {
           >
             {isActive ? '● ' : '  '}
             {chatLabel(chat)}
+            {tags.length > 0 && <Text dimColor>  #{tags.join(' #')}</Text>}
           </Text>
         );
       })}
       <Text> </Text>
-      <Text dimColor>↑↓ navigate · Enter open · d del · r rename</Text>
+      <Text dimColor>↑↓ nav · Enter open · d del · r rename · t tags · p prompt</Text>
     </Box>
   );
 }

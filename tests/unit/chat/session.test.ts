@@ -107,6 +107,44 @@ describe('ChatManager', () => {
     expect(manager.session.id).not.toBe(first);
     store.close();
   });
+
+  it('sets tags on the current chat', async () => {
+    const { manager, store } = await makeManager(models);
+    const id = manager.session.id;
+    manager.setChatTags(id, ['rust', 'docs']);
+    expect(manager.session.tags).toEqual(['rust', 'docs']);
+    expect(manager.listChats()[0]?.tags).toEqual(['rust', 'docs']);
+    store.close();
+  });
+
+  it('sets a per-chat system prompt', async () => {
+    const { manager, store } = await makeManager(models);
+    const id = manager.session.id;
+    manager.setSystemPrompt(id, 'You are concise.');
+    expect(manager.session.systemPrompt).toBe('You are concise.');
+    store.close();
+  });
+
+  it('updates and deletes a message in the current chat', async () => {
+    const { manager, store } = await makeManager(models);
+    await collect(manager);
+    const userMsg = manager.session.messages.find((m) => m.role === 'user')!;
+    manager.updateMessage(manager.session.id, userMsg.id, 'edited text');
+    expect(manager.session.messages.find((m) => m.id === userMsg.id)?.content).toBe('edited text');
+    manager.deleteMessage(manager.session.id, userMsg.id);
+    expect(manager.session.messages.find((m) => m.id === userMsg.id)).toBeUndefined();
+    store.close();
+  });
+
+  it('searches messages within the chat', async () => {
+    const { manager, store } = await makeManager(models);
+    await collect(manager);
+    const res = manager.searchChat(manager.session.id, 'hello');
+    expect(res.length).toBeGreaterThan(0);
+    expect(res[0].content).toBe('hello');
+    expect(manager.searchChat(manager.session.id, 'nothere')).toHaveLength(0);
+    store.close();
+  });
 });
 
 function hangingProvider(): LLMProvider {

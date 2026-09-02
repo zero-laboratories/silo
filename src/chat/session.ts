@@ -120,6 +120,41 @@ export class ChatManager {
     }
   }
 
+  setSystemPrompt(id: string, systemPrompt: string): void {
+    this.store.setSystemPrompt(id, systemPrompt);
+    if (this.current.id === id) {
+      this.current = this.store.getChat(id) ?? this.current;
+    }
+  }
+
+  setChatTags(id: string, tags: string[]): void {
+    this.store.setChatTags(id, tags);
+    if (this.current.id === id) {
+      this.current = this.store.getChat(id) ?? this.current;
+    }
+  }
+
+  updateMessage(id: string, messageId: string, content: string): void {
+    this.store.updateMessage(id, messageId, content);
+    if (this.current.id === id) {
+      this.current = this.store.getChat(id) ?? this.current;
+    }
+  }
+
+  deleteMessage(id: string, messageId: string): void {
+    this.store.deleteMessage(id, messageId);
+    if (this.current.id === id) {
+      this.current = this.store.getChat(id) ?? this.current;
+    }
+  }
+
+  searchChat(id: string, query: string): ChatMessage[] {
+    const chat = this.store.getChat(id);
+    if (!chat || query.trim().length === 0) return [];
+    const q = query.toLowerCase();
+    return chat.messages.filter((m) => m.content.toLowerCase().includes(q));
+  }
+
   async generateTitle(id: string): Promise<string | null> {
     const chat = this.store.getChat(id);
     if (!chat) return null;

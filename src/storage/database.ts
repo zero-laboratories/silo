@@ -14,6 +14,7 @@ type ChatRow = {
   provider: string;
   title: string | null;
   system_prompt: string;
+  metadata: string | null;
 };
 
 type MessageRow = {
@@ -43,12 +44,13 @@ export class Store {
   createChat(chat: Omit<ChatSession, 'id' | 'createdAt' | 'updatedAt' | 'messages'>): ChatSession {
     const id = randomUUID();
     const now = new Date().toISOString();
+    const metadata = JSON.stringify({ tags: chat.tags ?? [] });
     this.db
       .prepare(
-        `INSERT INTO chats (id, created_at, updated_at, model, provider, title, system_prompt)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO chats (id, created_at, updated_at, model, provider, title, system_prompt, metadata)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(id, now, now, chat.model, chat.provider, chat.title ?? null, chat.systemPrompt);
+      .run(id, now, now, chat.model, chat.provider, chat.title ?? null, chat.systemPrompt, metadata);
     return {
       id,
       createdAt: new Date(now),
@@ -57,6 +59,7 @@ export class Store {
       provider: chat.provider,
       systemPrompt: chat.systemPrompt,
       title: chat.title,
+      tags: chat.tags ?? [],
       messages: [],
     };
   }
@@ -111,6 +114,28 @@ export class Store {
       .run(title.length > 0 ? title : null, new Date().toISOString(), id);
   }
 
+  setSystemPrompt(id: string, systemPrompt: string): void {
+    this.db
+      .prepare('UPDATE chats SET system_prompt = ?, updated_at = ? WHERE id = ?')
+      .run(systemPrompt, new Date().toISOString(), id);
+  }
+
+  setChatTags(id: string, tags: string[]): void {
+    this.db
+      .prepare('UPDATE chats SET metadata = ?, updated_at = ? WHERE id = ?')
+      .run(JSON.stringify({ tags }), new Date().toISOString(), id);
+  }
+
+  updateMessage(chatId: string, messageId: string, content: string): void {
+    this.db
+      .prepare('UPDATE messages SET content = ?, estimated_tokens = ? WHERE id = ? AND chat_id = ?')
+      .run(content, Math.ceil(content.length / 4), messageId, chatId);
+  }
+
+  deleteMessage(chatId: string, messageId: string): void {
+    this.db.prepare('DELETE FROM messages WHERE id = ? AND chat_id = ?').run(messageId, chatId);
+  }
+
   private toSession(row: ChatRow): ChatSession {
     const messageRows = this.db
       .prepare('SELECT * FROM messages WHERE chat_id = ? ORDER BY timestamp ASC')
@@ -122,6 +147,13 @@ export class Store {
       timestamp: new Date(m.timestamp),
       tokens: m.estimated_tokens ?? undefined,
     }));
+    let tags: string[] = [];
+    try {
+      const meta = row.metadata ? (JSON.parse(row.metadata) as { tags?: string[] }) : {};
+      tags = Array.isArray(meta.tags) ? meta.tags : [];
+    } catch {
+      tags = [];
+    }
     return {
       id: row.id,
       createdAt: new Date(row.created_at),
@@ -130,6 +162,7 @@ export class Store {
       provider: row.provider,
       title: row.title ?? undefined,
       systemPrompt: row.system_prompt,
+      tags,
       messages,
     };
   }

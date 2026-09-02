@@ -15,4 +15,5 @@ export interface ChatSession {
   messages: ChatMessage[];
   systemPrompt: string;
   title?: string;
+  tags?: string[];
 }

@@ -13,7 +13,7 @@
 - Better empty state messaging
 - Smoother transitions between views
 
-## V0.6: Advanced features
+## V0.6: Advanced features [Done]
 - Search within chat (Ctrl+F)
 - Chat tagging/organizing
 - Custom system prompts per chat

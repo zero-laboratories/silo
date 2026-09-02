@@ -86,4 +86,59 @@ describe('Store', () => {
     expect(store.listChats()).toHaveLength(0);
     cleanup();
   });
+
+  it('persists tags on a chat', () => {
+    const { store, cleanup } = makeStore();
+    const chat = store.createChat({
+      model: 'm',
+      provider: 'anthropic',
+      systemPrompt: '',
+      title: undefined,
+      tags: ['rust', 'docs'],
+    });
+    expect(store.getChat(chat.id)?.tags).toEqual(['rust', 'docs']);
+    store.setChatTags(chat.id, ['dev']);
+    expect(store.getChat(chat.id)?.tags).toEqual(['dev']);
+    cleanup();
+  });
+
+  it('sets a per-chat system prompt', () => {
+    const { store, cleanup } = makeStore();
+    const chat = store.createChat({
+      model: 'm',
+      provider: 'anthropic',
+      systemPrompt: '',
+      title: undefined,
+    });
+    store.setSystemPrompt(chat.id, 'You are helpful.');
+    expect(store.getChat(chat.id)?.systemPrompt).toBe('You are helpful.');
+    cleanup();
+  });
+
+  it('updates and deletes a message', () => {
+    const { store, cleanup } = makeStore();
+    const chat = store.createChat({
+      model: 'm',
+      provider: 'anthropic',
+      systemPrompt: '',
+      title: undefined,
+    });
+    const msg = store.appendMessage(chat.id, { role: 'user', content: 'hello' });
+    store.updateMessage(chat.id, msg.id, 'goodbye');
+    expect(store.getChat(chat.id)?.messages[0].content).toBe('goodbye');
+    store.deleteMessage(chat.id, msg.id);
+    expect(store.getChat(chat.id)?.messages).toHaveLength(0);
+    cleanup();
+  });
+
+  it('does not update or delete messages across chats', () => {
+    const { store, cleanup } = makeStore();
+    const a = store.createChat({ model: 'm', provider: 'anthropic', systemPrompt: '', title: undefined });
+    const b = store.createChat({ model: 'm', provider: 'anthropic', systemPrompt: '', title: undefined });
+    const msg = store.appendMessage(a.id, { role: 'user', content: 'hello' });
+    store.updateMessage(b.id, msg.id, 'mutated');
+    store.deleteMessage(b.id, msg.id);
+    expect(store.getChat(a.id)?.messages[0].content).toBe('hello');
+    cleanup();
+  });
 });

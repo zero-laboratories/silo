@@ -31,6 +31,20 @@ export function App({ manager, config }: AppProps) {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameInput, setRenameInput] = useState('');
+  const [tagging, setTagging] = useState<string | null>(null);
+  const [tagInput, setTagInput] = useState('');
+  const [promptEdit, setPromptEdit] = useState<string | null>(null);
+  const [promptInput, setPromptInput] = useState('');
+  const [msgIdx, setMsgIdx] = useState<number | null>(null);
+  const [msgCursor, setMsgCursor] = useState(0);
+  const [msgEditing, setMsgEditing] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [search, setSearch] = useState<{
+    active: boolean;
+    query: string;
+    results: ChatMessage[];
+    idx: number;
+  }>({ active: false, query: '', results: [], idx: 0 });
   const [helpVisible, setHelpVisible] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -79,6 +93,115 @@ export function App({ manager, config }: AppProps) {
       return;
     }
 
+    if (tagging !== null) {
+      if (key.return) {
+        doSetTags(tagging, tagInput);
+        setTagging(null);
+        setTagInput('');
+      } else if (key.escape) {
+        setTagging(null);
+        setTagInput('');
+      } else if (key.backspace || key.delete) {
+        setTagInput((prev) => prev.slice(0, -1));
+      } else if (inputChar) {
+        setTagInput((prev) => prev + inputChar);
+      }
+      return;
+    }
+
+    if (promptEdit !== null) {
+      if (key.return) {
+        doSetSystemPrompt(promptEdit, promptInput);
+        setPromptEdit(null);
+        setPromptInput('');
+      } else if (key.escape) {
+        setPromptEdit(null);
+        setPromptInput('');
+      } else if (key.backspace || key.delete) {
+        setPromptInput((prev) => prev.slice(0, -1));
+      } else if (inputChar) {
+        setPromptInput((prev) => prev + inputChar);
+      }
+      return;
+    }
+
+    if (search.active) {
+      if (key.return) {
+        setSearch((s) => ({ ...s, active: false }));
+        return;
+      }
+      if (key.escape) {
+        setSearch((s) => ({ ...s, active: false, query: '', results: [] }));
+        return;
+      }
+      if (key.upArrow) {
+        setSearch((s) => ({ ...s, idx: Math.max(0, s.idx - 1) }));
+        return;
+      }
+      if (key.downArrow) {
+        setSearch((s) => ({ ...s, idx: Math.min(s.results.length - 1, s.idx + 1) }));
+        return;
+      }
+      if (key.backspace || key.delete) {
+        setSearch((s) => {
+          const query = s.query.slice(0, -1);
+          return { ...s, query, results: manager.searchChat(session.id, query), idx: 0 };
+        });
+        return;
+      }
+      if (inputChar) {
+        setSearch((s) => {
+          const query = s.query + inputChar;
+          return { ...s, query, results: manager.searchChat(session.id, query), idx: 0 };
+        });
+        return;
+      }
+      return;
+    }
+
+    if (msgIdx !== null) {
+      if (key.escape) {
+        setMsgIdx(null);
+        setMsgCursor(0);
+        return;
+      }
+      if (key.return) {
+        setMsgIdx(null);
+        return;
+      }
+      if (key.upArrow) setMsgCursor((c) => Math.max(0, c - 1));
+      else if (key.downArrow)
+        setMsgCursor((c) => Math.min(messages.length - 1, c + 1));
+      else if (inputChar === 'e' || inputChar === 'E') {
+        editMessage(messages[msgCursor]);
+        setMsgIdx(null);
+      } else if (inputChar === 'd' || inputChar === 'D') {
+        deleteMessage(messages[msgCursor]);
+        setMsgIdx(null);
+      }
+      return;
+    }
+
+    if (msgEditing !== null) {
+      if (key.return) {
+        doEditMessage(msgEditing, editContent);
+        setMsgEditing(null);
+        setEditContent('');
+        return;
+      }
+      if (key.escape) {
+        setMsgEditing(null);
+        setEditContent('');
+        return;
+      }
+      if (key.backspace || key.delete) {
+        setEditContent((prev) => prev.slice(0, -1));
+      } else if (inputChar) {
+        setEditContent((prev) => prev + inputChar);
+      }
+      return;
+    }
+
     if (key.ctrl) {
       const ch = inputChar?.toLowerCase();
       if (ch === 's') {
@@ -90,6 +213,8 @@ export function App({ manager, config }: AppProps) {
         startNewChat();
       } else if (ch === 'c') {
         setView('chat');
+      } else if (ch === 'f') {
+        setSearch({ active: true, query: '', results: [], idx: 0 });
       }
       return;
     }
@@ -114,6 +239,18 @@ export function App({ manager, config }: AppProps) {
           setRenaming(chat.id);
           setRenameInput(chat.title ?? '');
         }
+      } else if (inputChar === 't' || inputChar === 'T') {
+        const chat = chats[chatIdx];
+        if (chat) {
+          setTagging(chat.id);
+          setTagInput((chat.tags ?? []).join(', '));
+        }
+      } else if (inputChar === 'p' || inputChar === 'P') {
+        const chat = chats[chatIdx];
+        if (chat) {
+          setPromptEdit(chat.id);
+          setPromptInput(chat.systemPrompt);
+        }
       }
       return;
     }
@@ -129,6 +266,14 @@ export function App({ manager, config }: AppProps) {
           if (!res.ok) setError(`E: ${res.error ?? 'Failed to switch model'}`);
           else setError(null);
         }
+      }
+      return;
+    }
+
+    if (inputChar === 'e' || inputChar === 'E') {
+      if (messages.length > 0) {
+        setMsgIdx(0);
+        setMsgCursor(messages.length - 1);
       }
       return;
     }
@@ -227,6 +372,41 @@ export function App({ manager, config }: AppProps) {
     setChats(manager.listChats());
   }
 
+  function doSetTags(id: string, raw: string) {
+    const tags = raw
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean);
+    manager.setChatTags(id, tags);
+    setChats(manager.listChats());
+    setMessages(manager.session.messages);
+  }
+
+  function doSetSystemPrompt(id: string, prompt: string) {
+    manager.setSystemPrompt(id, prompt);
+    setChats(manager.listChats());
+    setMessages(manager.session.messages);
+  }
+
+  function editMessage(msg: ChatMessage | undefined) {
+    if (!msg) return;
+    setMsgEditing(msg.id);
+    setEditContent(msg.content);
+  }
+
+  function deleteMessage(msg: ChatMessage | undefined) {
+    if (!msg) return;
+    manager.deleteMessage(session.id, msg.id);
+    setMessages(manager.session.messages);
+    setChats(manager.listChats());
+  }
+
+  function doEditMessage(id: string, content: string) {
+    manager.updateMessage(session.id, id, content);
+    setMessages(manager.session.messages);
+    setChats(manager.listChats());
+  }
+
   if (helpVisible) {
     return (
       <Box flexDirection="column" height={rows}>
@@ -272,6 +452,44 @@ export function App({ manager, config }: AppProps) {
                 )}
               </Box>
             )}
+            {tagging && (
+              <Box
+                borderStyle="single"
+                borderColor="magenta"
+                paddingX={1}
+                width={34}
+                marginTop={1}
+              >
+                <Text color="magenta">Tags (comma sep): </Text>
+                {tagInput.length > 0 ? (
+                  <>
+                    <Text>{tagInput}</Text>
+                    <Text inverse> </Text>
+                  </>
+                ) : (
+                  <Text inverse> </Text>
+                )}
+              </Box>
+            )}
+            {promptEdit && (
+              <Box
+                borderStyle="single"
+                borderColor="green"
+                paddingX={1}
+                width={34}
+                marginTop={1}
+              >
+                <Text color="green">System prompt: </Text>
+                {promptInput.length > 0 ? (
+                  <>
+                    <Text>{promptInput}</Text>
+                    <Text inverse> </Text>
+                  </>
+                ) : (
+                  <Text inverse> </Text>
+                )}
+              </Box>
+            )}
           </Box>
         )}
         {view === 'settings' && (
@@ -282,28 +500,48 @@ export function App({ manager, config }: AppProps) {
           />
         )}
         <Box flexDirection="column" flexGrow={1}>
+          {search.active && (
+            <SearchBar query={search.query} count={search.results.length} />
+          )}
           <Box
             flexDirection="column"
             flexGrow={1}
             justifyContent="flex-end"
             alignItems="center"
           >
-            {messages.length === 0 && !isStreaming && !streaming && !error && (
+            {search.active ? (
+              <SearchResults results={search.results} selected={search.idx} />
+            ) : messages.length === 0 && !isStreaming && !streaming && !error ? (
               <WelcomeScreen />
-            )}
-            {(messages.length > 0 || isStreaming || streaming || error) && (
+            ) : (
               <Box flexDirection="column" flexGrow={1}>
                 <Layout
                   messages={messages}
                   streaming={streaming}
                   isStreaming={isStreaming}
                   error={error}
+                  selectable={msgIdx !== null}
+                  selected={msgCursor}
                 />
               </Box>
             )}
           </Box>
+          {msgIdx !== null && msgEditing === null && (
+            <Box justifyContent="center" marginBottom={1}>
+              <Box borderStyle="single" borderColor="yellow" paddingX={1}>
+                <Text color="yellow">
+                  Select: ↑/↓ · e edit · d delete · Enter/Esc done
+                </Text>
+              </Box>
+            </Box>
+          )}
+          {msgEditing !== null && (
+            <EditBar value={editContent} />
+          )}
           <Box alignItems="center" flexDirection="column">
-            <InputBox value={input} isStreaming={isStreaming} />
+            {!search.active && msgIdx === null && msgEditing === null && (
+              <InputBox value={input} isStreaming={isStreaming} />
+            )}
           </Box>
         </Box>
       </Box>
@@ -396,16 +634,25 @@ function Layout({
   streaming,
   isStreaming,
   error,
+  selectable = false,
+  selected = 0,
 }: {
   messages: ChatMessage[];
   streaming: string;
   isStreaming: boolean;
   error: string | null;
+  selectable?: boolean;
+  selected?: number;
 }) {
   return (
     <Box flexDirection="column" flexGrow={1} width="100%" paddingX={1}>
-      {messages.map((msg) => (
-        <MessageView key={msg.id} message={msg} />
+      {messages.map((msg, i) => (
+        <MessageView
+          key={msg.id}
+          message={msg}
+          selectable={selectable}
+          selected={selectable && i === selected}
+        />
       ))}
       {isStreaming && (
         <Box>
@@ -435,20 +682,100 @@ function normalizeMessage(content: string): string {
     .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '');
 }
 
-function MessageView({ message }: { message: ChatMessage }) {
+function MessageView({
+  message,
+  selectable = false,
+  selected = false,
+}: {
+  message: ChatMessage;
+  selectable?: boolean;
+  selected?: boolean;
+}) {
   const name = message.role === 'user' ? 'You' : 'Assistant';
   const color = message.role === 'user' ? 'cyan' : 'green';
   const content = normalizeMessage(message.content);
+  const marker = selectable ? (selected ? '» ' : '  ') : '';
   return (
     <Box>
-      <Text color={color} bold>
-        {name}:{' '}
+      <Text color={selected ? 'yellow' : color} bold inverse={selected}>
+        {marker}{name}:{' '}
       </Text>
       {content.length > 0 ? (
-        <Text>{content}</Text>
+        <Text inverse={selected}>{content}</Text>
       ) : (
         <Text dimColor>(no response)</Text>
       )}
+    </Box>
+  );
+}
+
+function SearchBar({ query, count }: { query: string; count: number }) {
+  return (
+    <Box borderStyle="single" borderColor="magenta" width="100%" paddingX={1} marginBottom={1}>
+      <Text color="magenta" bold>
+        Search:{' '}
+      </Text>
+      {query.length > 0 ? (
+        <>
+          <Text>{query}</Text>
+          <Text inverse> </Text>
+        </>
+      ) : (
+        <Text dimColor>Type to search current chat…</Text>
+      )}
+      <Text color="gray"> ({count} matches) · Enter/Esc done</Text>
+    </Box>
+  );
+}
+
+function SearchResults({
+  results,
+  selected,
+}: {
+  results: ChatMessage[];
+  selected: number;
+}) {
+  if (results.length === 0) {
+    return (
+      <Box flexDirection="column" alignItems="center">
+        <Text dimColor>No matching messages.</Text>
+      </Box>
+    );
+  }
+  return (
+    <Box flexDirection="column" width="100%" paddingX={1}>
+      {results.map((msg, i) => {
+        const name = msg.role === 'user' ? 'You' : 'Assistant';
+        const color = msg.role === 'user' ? 'cyan' : 'green';
+        const content = normalizeMessage(msg.content);
+        return (
+          <Box key={msg.id}>
+            <Text color={i === selected ? 'yellow' : color} bold inverse={i === selected}>
+              {i === selected ? '» ' : '  '}{name}:{' '}
+            </Text>
+            <Text inverse={i === selected}>{content}</Text>
+          </Box>
+        );
+      })}
+    </Box>
+  );
+}
+
+function EditBar({ value }: { value: string }) {
+  return (
+    <Box borderStyle="single" borderColor="yellow" width="100%" paddingX={1} marginBottom={1}>
+      <Text color="yellow" bold>
+        Edit:{' '}
+      </Text>
+      {value.length > 0 ? (
+        <>
+          <Text>{value}</Text>
+          <Text inverse> </Text>
+        </>
+      ) : (
+        <Text inverse> </Text>
+      )}
+      <Text color="gray"> · Enter save · Esc cancel</Text>
     </Box>
   );
 }
