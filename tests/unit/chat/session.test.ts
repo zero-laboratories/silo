@@ -77,4 +77,32 @@ describe('ChatManager', () => {
     expect(manager.currentModel).toBe('claude');
     store.close();
   });
+
+  it('deletes a chat and falls back to a fresh chat', async () => {
+    const { manager, store } = await makeManager(models);
+    const first = manager.session.id;
+    manager.deleteChat(first);
+    expect(manager.session.id).not.toBe(first);
+    expect(manager.listChats()).toHaveLength(1);
+    expect(manager.listChats()[0]?.id).toBe(manager.session.id);
+    store.close();
+  });
+
+  it('renames a chat', async () => {
+    const { manager, store } = await makeManager(models);
+    const id = manager.session.id;
+    manager.renameChat(id, 'My new title');
+    expect(manager.session.title).toBe('My new title');
+    expect(manager.listChats()[0]?.title).toBe('My new title');
+    store.close();
+  });
+
+  it('deleting a non-active chat keeps the current session', async () => {
+    const { manager, store } = await makeManager(models);
+    const first = manager.session.id;
+    manager.newChat();
+    manager.deleteChat(first);
+    expect(manager.session.id).not.toBe(first);
+    store.close();
+  });
 });

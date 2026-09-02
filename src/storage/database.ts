@@ -105,6 +105,12 @@ export class Store {
     this.db.prepare('DELETE FROM chats WHERE id = ?').run(id);
   }
 
+  renameChat(id: string, title: string): void {
+    this.db
+      .prepare('UPDATE chats SET title = ?, updated_at = ? WHERE id = ?')
+      .run(title.length > 0 ? title : null, new Date().toISOString(), id);
+  }
+
   private toSession(row: ChatRow): ChatSession {
     const messageRows = this.db
       .prepare('SELECT * FROM messages WHERE chat_id = ? ORDER BY timestamp ASC')

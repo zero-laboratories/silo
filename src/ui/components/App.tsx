@@ -26,6 +26,9 @@ export function App({ manager, config }: AppProps) {
   const [view, setView] = useState<View>('chat');
   const [chatIdx, setChatIdx] = useState(0);
   const [modelIdx, setModelIdx] = useState(0);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [renameInput, setRenameInput] = useState('');
   const abortRef = useRef<AbortController | null>(null);
 
   useInput((inputChar, key) => {
@@ -33,6 +36,32 @@ export function App({ manager, config }: AppProps) {
       if (key.ctrl) {
         abortRef.current?.abort();
         setIsStreaming(false);
+      }
+      return;
+    }
+
+    if (confirmDelete !== null) {
+      if (key.return || inputChar === 'y' || inputChar === 'Y') {
+        doDeleteChat(confirmDelete);
+        setConfirmDelete(null);
+      } else if (inputChar === 'n' || inputChar === 'N' || key.escape) {
+        setConfirmDelete(null);
+      }
+      return;
+    }
+
+    if (renaming !== null) {
+      if (key.return) {
+        doRenameChat(renaming, renameInput);
+        setRenaming(null);
+        setRenameInput('');
+      } else if (key.escape) {
+        setRenaming(null);
+        setRenameInput('');
+      } else if (key.backspace || key.delete) {
+        setRenameInput((prev) => prev.slice(0, -1));
+      } else if (inputChar) {
+        setRenameInput((prev) => prev + inputChar);
       }
       return;
     }
@@ -63,6 +92,15 @@ export function App({ manager, config }: AppProps) {
       else if (key.return) {
         const chat = chats[chatIdx];
         if (chat && chat.id !== session.id) openChat(chat.id);
+      } else if (inputChar === 'd' || inputChar === 'D') {
+        const chat = chats[chatIdx];
+        if (chat) setConfirmDelete(chat.id);
+      } else if (inputChar === 'r' || inputChar === 'R') {
+        const chat = chats[chatIdx];
+        if (chat) {
+          setRenaming(chat.id);
+          setRenameInput(chat.title ?? '');
+        }
       }
       return;
     }
@@ -151,12 +189,58 @@ export function App({ manager, config }: AppProps) {
     setView('chat');
   }
 
+  function doDeleteChat(id: string) {
+    manager.deleteChat(id);
+    const next = manager.listChats();
+    setChats(next);
+    setChatIdx((i) => Math.max(0, Math.min(i, next.length - 1)));
+    setMessages(manager.session.messages);
+    setError(null);
+  }
+
+  function doRenameChat(id: string, title: string) {
+    manager.renameChat(id, title.trim());
+    setChats(manager.listChats());
+  }
+
   return (
     <Box flexDirection="column" height={rows}>
       <Header manager={manager} view={view} isStreaming={isStreaming} />
       <Box flexDirection="row" flexGrow={1}>
         {view === 'sidebar' && (
-          <Sidebar chats={chats} activeId={session.id} selected={chatIdx} />
+          <Box flexDirection="column">
+            <Sidebar chats={chats} activeId={session.id} selected={chatIdx} />
+            {confirmDelete && (
+              <Box
+                borderStyle="single"
+                borderColor="yellow"
+                paddingX={1}
+                width={34}
+                marginTop={1}
+              >
+                <Text color="yellow">Delete selected conversation? (y/N)</Text>
+              </Box>
+            )}
+            {renaming && (
+              <Box
+                borderStyle="single"
+                borderColor="cyan"
+                paddingX={1}
+                width={34}
+                marginTop={1}
+              >
+                <Text color="cyan">New title: </Text>
+                {renameInput.length > 0 ? (
+                  <>
+                    <Text>{renameInput}</Text>
+                    <Text inverse> </Text>
+                  </>
+                ) : (
+                  <Text inverse> </Text>
+                )}
+              </Box>
+            )}
+          </Box>
         )}
         {view === 'settings' && (
           <Settings
@@ -206,7 +290,7 @@ export function App({ manager, config }: AppProps) {
 
 function navHint(view: View): string {
   if (view === 'chat') return 'Ctrl+S sidebar · Ctrl+G settings · Ctrl+T new chat';
-  if (view === 'sidebar') return '↑/↓ navigate · Enter open · Esc back';
+  if (view === 'sidebar') return '↑/↓ navigate · Enter open · d delete · r rename · Esc back';
   return '↑/↓ select · Enter switch · Esc back';
 }
 

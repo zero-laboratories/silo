@@ -77,6 +77,27 @@ export class ChatManager {
     });
   }
 
+  deleteChat(id: string): void {
+    this.store.deleteChat(id);
+    if (this.current.id === id) {
+      this.current =
+        this.store.listChats()[0] ??
+        this.store.createChat({
+          model: this.config.model,
+          provider: this.config.provider,
+          title: undefined,
+          systemPrompt: '',
+        });
+    }
+  }
+
+  renameChat(id: string, title: string): void {
+    this.store.renameChat(id, title);
+    if (this.current.id === id) {
+      this.current = this.store.getChat(id) ?? this.current;
+    }
+  }
+
   modelsByName(): string[] {
     return Object.keys(this.models);
   }
