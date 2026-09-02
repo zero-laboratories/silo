@@ -44,3 +44,20 @@ Always run `pnpm typecheck` and `pnpm lint` before committing. If either fails, 
 - Run `pnpm lint`, `pnpm typecheck`, and `pnpm test` before committing.
 - Keep commits focused. One logical change per commit.
 - Don't commit secrets, API keys, or credentials. Ever.
+
+## Global install gotcha (pnpm catalog pin)
+
+`pnpm add -g @zeropbc/silo@latest` can resolve to a stale version because the
+pnpm global catalog at `~/.local/share/pnpm/global/v11/pnpm-workspace.yaml`
+auto-records every installed version under `minimumReleaseAgeExclude`. That pin
+blocks `@latest` from moving past it, so upgrades lag behind the newest release.
+
+To get a specific version reliably:
+
+```bash
+pnpm add -g @zeropbc/silo@<version> --registry https://silo-production-96d9.up.railway.app
+```
+
+If you want `@latest` to track the newest release again, remove any
+`@zeropbc/silo@<version>` entries from that YAML's `minimumReleaseAgeExclude`
+list. (Keep the obsolete `@zero-lab/silo@0.1.0` entry — harmless.)
