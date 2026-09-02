@@ -207,6 +207,9 @@ importers:
 
   .:
     dependencies:
+      '@zeropbc/silo':
+        specifier: ^0.2.0
+        version: 0.2.0(@types/react@19.2.18)
       better-sqlite3:
         specifier: ^13.0.3
         version: 13.0.3
@@ -765,6 +768,10 @@ packages:
 
   '@vitest/utils@4.1.11':
     resolution: {integrity: sha512-zTCVGpyFsGWBhllOyKlTw/vnr6D9qxsfSDyfbyZmTyjHw5N/VuvzHpHoQjm2ZJzn4RJgx5w4r7V0er69CmLgPQ==}
+
+  '@zeropbc/silo@0.2.0':
+    resolution: {integrity: sha512-TALZwoLG7TXjbL6ftYDuNFQaQWpqLEi4kySqLOORPssqBQu7PL2hUmbFmffpWioEu1TkoRRGrHZM9OdYpMnZgA==}
+    hasBin: true
 
   acorn-jsx@5.3.2:
     resolution: {integrity: sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==}
@@ -1989,6 +1996,19 @@ snapshots:
       '@vitest/pretty-format': 4.1.11
       convert-source-map: 2.0.0
       tinyrainbow: 3.1.1
+
+  '@zeropbc/silo@0.2.0(@types/react@19.2.18)':
+    dependencies:
+      better-sqlite3: 13.0.3
+      commander: 15.0.0
+      ink: 7.1.1(@types/react@19.2.18)(react@19.2.8)
+      react: 19.2.8
+      smol-toml: 1.8.0
+    transitivePeerDependencies:
+      - '@types/react'
+      - bufferutil
+      - react-devtools-core
+      - utf-8-validate
 
   acorn-jsx@5.3.2(acorn@8.18.0):
     dependencies:

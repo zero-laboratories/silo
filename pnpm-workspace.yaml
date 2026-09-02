@@ -1,3 +1,5 @@
 allowBuilds:
   better-sqlite3: true
   esbuild: true
+minimumReleaseAgeExclude:
+  - '@zeropbc/silo@0.2.0'

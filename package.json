@@ -38,6 +38,7 @@
     "registry": "https://silo-production-96d9.up.railway.app"
   },
   "dependencies": {
+    "@zeropbc/silo": "^0.2.0",
     "better-sqlite3": "^13.0.3",
     "commander": "^15.0.0",
     "ink": "^7.1.1",
