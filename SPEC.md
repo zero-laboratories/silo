@@ -1,11 +1,8 @@
-# THIS IS OUTDATED. THIS WILL BE UPDATED SOON.
-
 # Silo Architecture Specification
 
 **Project:** Silo (S1L0)  
-**Organization:** Zero Labs  
+**Organization:** Zero PBC  
 **Status:** MVP Specification  
-**Date:** August 31, 2026  
 **Distribution:** pnpm package (npm registry)
 
 ---
@@ -701,11 +698,8 @@ silo/
 ## 10. Non-Goals (MVP)
 
 - Cloud sync (data stays local)
-- Web interface (CLI only)
 - Voice input/output (text only)
 - Image support (text only)
-- Web search (local context only)
-- Plugins/extensibility (core product first)
 - Desktop app (terminal only)
 
 ---

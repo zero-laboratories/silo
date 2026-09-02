@@ -25,8 +25,15 @@
 - Documentation polish
 - Release notes automation
 
-## V0.8 and V0.9: V1-beta (Silo Work integration)
+## V0.8 - part of V1-beta
 - Work mode UI
 - Cowork context handling
 - Mode switching (Chat ↔ Work)
 - Beta testing framework
+
+## V0.9 - finale for V1-beta
+- MCP server integration
+- Improve Work mode
+- Filesystem access for Work
+- SKILLS support via SKILL.md
+- Web Search support
