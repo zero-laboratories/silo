@@ -227,9 +227,16 @@ export function App({ manager, config }: AppProps) {
     setChats(manager.listChats());
   }
 
+  if (helpVisible) {
+    return (
+      <Box flexDirection="column" height={rows}>
+        <HelpOverlay />
+      </Box>
+    );
+  }
+
   return (
     <Box flexDirection="column" height={rows}>
-      {helpVisible && <HelpOverlay />}
       <Header manager={manager} view={view} isStreaming={isStreaming} />
       <Box flexDirection="row" flexGrow={1}>
         {view === 'sidebar' && (

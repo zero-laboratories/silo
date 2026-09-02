@@ -1,44 +1,39 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 
-const shortcuts = [
-  ['Chat', ''],
-  ['', 'Type a message and press Enter to send'],
-  ['Ctrl+T', 'Start a new chat'],
-  ['Ctrl+S', 'Open sidebar'],
-  ['Ctrl+G', 'Open settings'],
-  ['Ctrl+C', 'Stop streaming'],
-  ['?', 'Show this help'],
-  ['', ''],
-  ['Sidebar', ''],
-  ['↑/↓', 'Navigate conversations'],
-  ['Enter', 'Open selected chat'],
-  ['d', 'Delete selected chat'],
-  ['r', 'Rename selected chat'],
-  ['Esc', 'Back to chat'],
-  ['', ''],
-  ['Settings', ''],
-  ['↑/↓', 'Browse models'],
-  ['Enter', 'Switch to selected model'],
-  ['Esc', 'Back to chat'],
+const shortcuts: Array<[string, string, boolean]> = [
+  ['Chat', '', true],
+  ['', 'Type a message and press Enter to send', false],
+  ['Ctrl+T', 'Start a new chat', false],
+  ['Ctrl+S', 'Open sidebar', false],
+  ['Ctrl+G', 'Open settings', false],
+  ['Ctrl+C', 'Stop streaming', false],
+  ['?', 'Show this help', false],
+  ['Sidebar', '', true],
+  ['↑/↓', 'Navigate conversations', false],
+  ['Enter', 'Open selected chat', false],
+  ['d', 'Delete selected chat', false],
+  ['r', 'Rename selected chat', false],
+  ['Esc', 'Back to chat', false],
+  ['Settings', '', true],
+  ['↑/↓', 'Browse models', false],
+  ['Enter', 'Switch to selected model', false],
+  ['Esc', 'Back to chat', false],
 ];
 
 export function HelpOverlay() {
   return (
     <Box
-      position="absolute"
-      width="100%"
-      height="100%"
       flexDirection="column"
       alignItems="center"
       justifyContent="center"
+      flexGrow={1}
     >
       <Box
         borderStyle="double"
         borderColor="cyan"
         flexDirection="column"
         paddingX={1}
-        paddingY={0}
         width={50}
       >
         <Box justifyContent="center">
@@ -47,9 +42,8 @@ export function HelpOverlay() {
           </Text>
         </Box>
         <Text> </Text>
-        {shortcuts.map(([key, desc], i) => {
-          if (!key && !desc) return <Text key={i}> </Text>;
-          if (!desc) {
+        {shortcuts.map(([key, desc, isHeader], i) => {
+          if (isHeader) {
             return (
               <Text key={i} color="cyan" bold>
                 {key}
@@ -61,7 +55,7 @@ export function HelpOverlay() {
               <Text color="yellow" bold>
                 {key.padEnd(10)}
               </Text>
-              <Text dimColor>{desc}</Text>
+              <Text>{desc}</Text>
             </Text>
           );
         })}

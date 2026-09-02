@@ -13,7 +13,7 @@ export function buildCli(): typeof program {
   program
     .name('silo')
     .description('A minimal, model-agnostic CLI chat app for Linux.')
-    .version('0.5.1');
+    .version('0.5.2');
 
   program
     .command('chat')
