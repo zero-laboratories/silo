@@ -45,7 +45,6 @@
     "@opentui/react": "^0.5.10",
     "better-sqlite3": "^13.0.3",
     "commander": "^15.0.0",
-    "ink": "^7.1.1",
     "react": "^19.2.8",
     "smol-toml": "^1.8.0"
   },

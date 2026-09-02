@@ -1,6 +1,6 @@
 import React from 'react';
-import { Box, Text } from 'ink';
 import type { SiloConfig } from '../../config/type.js';
+import { BOLD, DIM, INVERSE } from '../styles.js';
 
 interface SettingsProps {
   config: SiloConfig;
@@ -11,21 +11,21 @@ interface SettingsProps {
 export function Settings({ config, currentModel, selected }: SettingsProps) {
   const names = Object.keys(config.models);
   return (
-    <Box flexDirection="column" width={60} borderStyle="single" borderColor="gray" paddingX={1}>
-      <Box justifyContent="space-between">
-        <Text color="cyan" bold>
+    <box flexDirection="column" width={60} borderStyle="single" borderColor="gray" paddingX={1}>
+      <box justifyContent="space-between">
+        <text fg="cyan" attributes={BOLD}>
           Model Settings
-        </Text>
-        <Text dimColor>Esc</Text>
-      </Box>
-      <Text color="green">
+        </text>
+        <text attributes={DIM}>Esc</text>
+      </box>
+      <text fg="green" attributes={BOLD}>
         ● Current Model: {currentModel} ({config.models[currentModel]?.provider})
-      </Text>
-      <Text> </Text>
-      <Text color="cyan" bold>
+      </text>
+      <text> </text>
+      <text fg="cyan" attributes={BOLD}>
         Configured Models
-      </Text>
-      {names.length === 0 && <Text dimColor>No models configured.</Text>}
+      </text>
+      {names.length === 0 && <text attributes={DIM}>No models configured.</text>}
       {names.map((name, i) => {
         const m = config.models[name];
         const detail = [
@@ -37,14 +37,14 @@ export function Settings({ config, currentModel, selected }: SettingsProps) {
           .filter(Boolean)
           .join(' · ');
         return (
-          <Text key={name} inverse={i === selected} color={name === currentModel ? 'green' : undefined}>
+          <text key={name} fg={name === currentModel ? 'green' : undefined} attributes={i === selected ? INVERSE : undefined}>
             {name === currentModel ? '●' : ' '} {name}
-            {detail ? <Text dimColor>  — {detail}</Text> : null}
-          </Text>
+            {detail ? <span attributes={DIM}>  — {detail}</span> : null}
+          </text>
         );
       })}
-      <Text> </Text>
-      <Text dimColor>↑↓ select · Enter switch · ? shortcuts</Text>
-    </Box>
+      <text> </text>
+      <text attributes={DIM}>↑↓ select · Enter switch · ? shortcuts</text>
+    </box>
   );
 }
