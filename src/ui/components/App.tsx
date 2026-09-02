@@ -1,14 +1,20 @@
 import React, { useRef, useState } from 'react';
 import { Box, Text, useInput, useWindowSize } from 'ink';
 import { Logo } from './Logo.js';
+import { Sidebar } from './Sidebar.js';
+import { Settings } from './Settings.js';
 import type { ChatManager } from '../../chat/session.js';
-import type { ChatMessage } from '../../chat/types.js';
+import type { ChatMessage, ChatSession } from '../../chat/types.js';
+import type { SiloConfig } from '../../config/type.js';
+
+type View = 'chat' | 'sidebar' | 'settings';
 
 interface AppProps {
   manager: ChatManager;
+  config: SiloConfig;
 }
 
-export function App({ manager }: AppProps) {
+export function App({ manager, config }: AppProps) {
   const { rows } = useWindowSize();
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState('');
@@ -16,6 +22,10 @@ export function App({ manager }: AppProps) {
   const [error, setError] = useState<string | null>(null);
   const session = manager.session;
   const [messages, setMessages] = useState<ChatMessage[]>(session.messages);
+  const [chats, setChats] = useState<ChatSession[]>(() => manager.listChats());
+  const [view, setView] = useState<View>('chat');
+  const [chatIdx, setChatIdx] = useState(0);
+  const [modelIdx, setModelIdx] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
 
   useInput((inputChar, key) => {
@@ -23,6 +33,51 @@ export function App({ manager }: AppProps) {
       if (key.ctrl) {
         abortRef.current?.abort();
         setIsStreaming(false);
+      }
+      return;
+    }
+
+    if (key.ctrl) {
+      const ch = inputChar?.toLowerCase();
+      if (ch === 's') {
+        setView((v) => (v === 'sidebar' ? 'chat' : 'sidebar'));
+        setChats(manager.listChats());
+      } else if (ch === 'g') {
+        setView((v) => (v === 'settings' ? 'chat' : 'settings'));
+      } else if (ch === 't') {
+        startNewChat();
+      } else if (ch === 'c') {
+        setView('chat');
+      }
+      return;
+    }
+
+    if (key.escape) {
+      setView('chat');
+      return;
+    }
+
+    if (view === 'sidebar') {
+      if (key.upArrow) setChatIdx((i) => Math.max(0, i - 1));
+      else if (key.downArrow) setChatIdx((i) => Math.min(chats.length - 1, i + 1));
+      else if (key.return) {
+        const chat = chats[chatIdx];
+        if (chat && chat.id !== session.id) openChat(chat.id);
+      }
+      return;
+    }
+
+    if (view === 'settings') {
+      const names = Object.keys(config.models);
+      if (key.upArrow) setModelIdx((i) => Math.max(0, i - 1));
+      else if (key.downArrow) setModelIdx((i) => Math.min(names.length - 1, i + 1));
+      else if (key.return) {
+        const name = names[modelIdx];
+        if (name && name !== manager.currentModel) {
+          const res = manager.switchModel(name);
+          if (!res.ok) setError(res.error ?? 'E: Failed to switch model');
+          else setError(null);
+        }
       }
       return;
     }
@@ -74,46 +129,123 @@ export function App({ manager }: AppProps) {
       setIsStreaming(false);
       setStreaming('');
       setMessages(manager.session.messages);
+      setChats(manager.listChats());
     }
   }
 
-  const hasChat = messages.length > 0 || error !== null;
+  function startNewChat() {
+    manager.newChat();
+    setMessages([]);
+    setInput('');
+    setError(null);
+    setStreaming('');
+    setChats(manager.listChats());
+    setView('chat');
+  }
+
+  function openChat(id: string) {
+    manager.switchChat(id);
+    setMessages(manager.session.messages);
+    setInput('');
+    setError(null);
+    setView('chat');
+  }
 
   return (
     <Box flexDirection="column" height={rows}>
-      {hasChat && (
-        <Box borderStyle="single" borderColor="gray" paddingX={1}>
-          <Text color="cyan" bold>SILO</Text>
+      <Header manager={manager} view={view} isStreaming={isStreaming} />
+      <Box flexDirection="row" flexGrow={1}>
+        {view === 'sidebar' && (
+          <Sidebar chats={chats} activeId={session.id} selected={chatIdx} />
+        )}
+        {view === 'settings' && (
+          <Settings
+            config={config}
+            currentModel={manager.currentModel}
+            selected={modelIdx}
+          />
+        )}
+        <Box flexDirection="column" flexGrow={1}>
+          <Box
+            flexDirection="column"
+            flexGrow={1}
+            justifyContent="flex-end"
+            alignItems="center"
+          >
+            {messages.length === 0 && !isStreaming && !streaming && !error && (
+              <Box
+                flexDirection="column"
+                alignItems="center"
+                justifyContent="center"
+                flexGrow={1}
+              >
+                <Logo />
+                <Text> </Text>
+                <Text dimColor>{navHint(view)}</Text>
+              </Box>
+            )}
+            {(messages.length > 0 || isStreaming || streaming || error) && (
+              <Box flexDirection="column" flexGrow={1}>
+                <Layout
+                  messages={messages}
+                  streaming={streaming}
+                  isStreaming={isStreaming}
+                  error={error}
+                />
+              </Box>
+            )}
+          </Box>
+          <Box alignItems="center" flexDirection="column">
+            <InputBox value={input} isStreaming={isStreaming} />
+          </Box>
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
+function navHint(view: View): string {
+  if (view === 'chat') return 'Ctrl+S sidebar · Ctrl+G settings · Ctrl+T new chat';
+  if (view === 'sidebar') return '↑/↓ navigate · Enter open · Esc back';
+  return '↑/↓ select · Enter switch · Esc back';
+}
+
+function Header({
+  manager,
+  view,
+  isStreaming,
+}: {
+  manager: ChatManager;
+  view: View;
+  isStreaming: boolean;
+}) {
+  return (
+    <Box borderStyle="single" borderColor="gray" paddingX={1}>
+      <Box flexDirection="row" justifyContent="space-between" alignItems="center" width="100%">
+        <Box flexDirection="row" alignItems="center">
+          <Text color="cyan" bold>
+            SILO
+          </Text>
           <Text color="gray"> · </Text>
           <Text>{manager.label}</Text>
           {isStreaming && <Text color="green"> · typing…</Text>}
         </Box>
-      )}
-      <Box flexDirection="column" flexGrow={1} justifyContent="flex-end" alignItems="center">
-        {messages.length === 0 && !isStreaming && !streaming && !error && (
-          <Box
-            flexDirection="column"
-            alignItems="center"
-            justifyContent="center"
-            flexGrow={1}
+        <Box flexDirection="row" alignItems="center">
+          <Text color={view === 'sidebar' ? 'cyan' : 'gray'} bold={view === 'sidebar'}>
+            [≡] s
+          </Text>
+          <Text color="gray"> </Text>
+          <Text
+            color={view === 'settings' ? 'cyan' : 'gray'}
+            bold={view === 'settings'}
           >
-            <Logo />
-            <Text> </Text>
-          </Box>
-        )}
-        {(messages.length > 0 || isStreaming || streaming || error) && (
-          <Box flexDirection="column" flexGrow={1}>
-            <Layout
-              messages={messages}
-              streaming={streaming}
-              isStreaming={isStreaming}
-              error={error}
-            />
-          </Box>
-        )}
-      </Box>
-      <Box alignItems="center" flexDirection="column">
-        <InputBox value={input} isStreaming={isStreaming} />
+            [⚙] g
+          </Text>
+          <Text color="gray"> </Text>
+          <Text color={view === 'chat' ? 'cyan' : 'gray'} bold={view === 'chat'}>
+            [+] t
+          </Text>
+        </Box>
       </Box>
     </Box>
   );
@@ -135,7 +267,11 @@ function Layout({
       {messages.map((msg) => (
         <MessageView key={msg.id} message={msg} />
       ))}
-      {isStreaming && <Text color="green" bold>Assistant: {streaming}</Text>}
+      {isStreaming && (
+        <Text color="green" bold>
+          Assistant: {streaming}
+        </Text>
+      )}
       {error && <Text color="red">{error}</Text>}
     </Box>
   );
@@ -146,7 +282,9 @@ function MessageView({ message }: { message: ChatMessage }) {
   const color = message.role === 'user' ? 'cyan' : 'green';
   return (
     <Box>
-      <Text color={color} bold>{name}: </Text>
+      <Text color={color} bold>
+        {name}:{' '}
+      </Text>
       <Text>{message.content}</Text>
     </Box>
   );
@@ -160,7 +298,9 @@ function InputBox({ value, isStreaming }: { value: string; isStreaming: boolean 
       width="50%"
       paddingX={1}
     >
-      <Text color={isStreaming ? 'yellow' : 'cyan'}>{isStreaming ? '* ' : '> '}</Text>
+      <Text color={isStreaming ? 'yellow' : 'cyan'}>
+        {isStreaming ? '* ' : '> '}
+      </Text>
       {value.length > 0 ? (
         <>
           <Text>{value}</Text>

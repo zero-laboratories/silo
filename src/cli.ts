@@ -13,7 +13,7 @@ export function buildCli(): typeof program {
   program
     .name('silo')
     .description('A minimal, model-agnostic CLI chat app for Linux.')
-    .version('0.1.0');
+    .version('0.2.0');
 
   program
     .command('chat')
@@ -58,7 +58,7 @@ function runChat(modelName?: string, resume?: boolean) {
     const store = new Store();
     const manager = new ChatManager(store, provider, model, { resume });
 
-    render(React.createElement(App, { manager }), { alternateScreen: true });
+    render(React.createElement(App, { manager, config }), { alternateScreen: true });
   } catch (err) {
     console.error(toUserError(err));
     process.exit(1);

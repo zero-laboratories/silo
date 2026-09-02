@@ -3,6 +3,7 @@ import type { LLMProvider, StreamChunk } from '../models/types.js';
 import type { ModelConfig } from '../config/type.js';
 import type { ChatMessage, ChatSession } from './types.js';
 import { ContextManager, estimateTokens } from './context.js';
+import { providerFor } from '../models/index.js';
 
 export interface ChatManagerOptions {
   resume?: boolean;
@@ -12,6 +13,8 @@ export class ChatManager {
   private store: Store;
   private provider: LLMProvider;
   private config: ModelConfig;
+  private models: Record<string, ModelConfig>;
+  private modelName: string;
   private current: ChatSession;
 
   constructor(
@@ -19,10 +22,13 @@ export class ChatManager {
     provider: LLMProvider,
     config: ModelConfig,
     opts: ChatManagerOptions = {},
+    models: Record<string, ModelConfig> = {},
   ) {
     this.store = store;
     this.provider = provider;
     this.config = config;
+    this.models = models;
+    this.modelName = Object.keys(models).find((n) => models[n] === config) ?? 'custom';
 
     if (opts.resume) {
       this.current =
@@ -49,6 +55,51 @@ export class ChatManager {
 
   get label(): string {
     return `${this.config.provider}/${this.config.model}`;
+  }
+
+  listChats(): ChatSession[] {
+    return this.store.listChats();
+  }
+
+  switchChat(id: string): boolean {
+    const chat = this.store.getChat(id);
+    if (!chat) return false;
+    this.current = chat;
+    return true;
+  }
+
+  newChat(): void {
+    this.current = this.store.createChat({
+      model: this.config.model,
+      provider: this.config.provider,
+      title: undefined,
+      systemPrompt: '',
+    });
+  }
+
+  modelsByName(): string[] {
+    return Object.keys(this.models);
+  }
+
+  switchModel(name: string): { ok: boolean; error?: string } {
+    const model = this.models[name];
+    if (!model) return { ok: false, error: `Model "${name}" is not configured` };
+    this.config = model;
+    this.modelName = name;
+    try {
+      this.provider = providerFor(model.provider);
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : String(err) };
+    }
+    return { ok: true };
+  }
+
+  get currentModel(): string {
+    return this.modelName;
+  }
+
+  get modelConfig(): ModelConfig {
+    return this.config;
   }
 
   async *send(userMessage: string): AsyncGenerator<StreamChunk> {
