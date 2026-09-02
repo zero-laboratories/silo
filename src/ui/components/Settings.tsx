@@ -12,9 +12,12 @@ export function Settings({ config, currentModel, selected }: SettingsProps) {
   const names = Object.keys(config.models);
   return (
     <Box flexDirection="column" width={60} borderStyle="single" borderColor="gray" paddingX={1}>
-      <Text color="cyan" bold>
-        Model Settings
-      </Text>
+      <Box justifyContent="space-between">
+        <Text color="cyan" bold>
+          Model Settings
+        </Text>
+        <Text dimColor>Esc</Text>
+      </Box>
       <Text color="green">
         ● Current Model: {currentModel} ({config.models[currentModel]?.provider})
       </Text>
@@ -41,7 +44,7 @@ export function Settings({ config, currentModel, selected }: SettingsProps) {
         );
       })}
       <Text> </Text>
-      <Text dimColor>↑/↓ select · Enter switch · Esc back</Text>
+      <Text dimColor>↑↓ select · Enter switch · ? shortcuts</Text>
     </Box>
   );
 }

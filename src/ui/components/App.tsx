@@ -3,6 +3,7 @@ import { Box, Text, useInput, useWindowSize } from 'ink';
 import { Logo } from './Logo.js';
 import { Sidebar } from './Sidebar.js';
 import { Settings } from './Settings.js';
+import { HelpOverlay } from './HelpOverlay.js';
 import type { ChatManager } from '../../chat/session.js';
 import type { ChatMessage, ChatSession } from '../../chat/types.js';
 import type { SiloConfig } from '../../config/type.js';
@@ -30,6 +31,7 @@ export function App({ manager, config }: AppProps) {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameInput, setRenameInput] = useState('');
+  const [helpVisible, setHelpVisible] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   useInput((inputChar, key) => {
@@ -38,6 +40,16 @@ export function App({ manager, config }: AppProps) {
         abortRef.current?.abort();
         setIsStreaming(false);
       }
+      return;
+    }
+
+    if (helpVisible) {
+      if (inputChar === '?' || key.escape) setHelpVisible(false);
+      return;
+    }
+
+    if (inputChar === '?') {
+      setHelpVisible(true);
       return;
     }
 
@@ -207,6 +219,7 @@ export function App({ manager, config }: AppProps) {
 
   return (
     <Box flexDirection="column" height={rows}>
+      {helpVisible && <HelpOverlay />}
       <Header manager={manager} view={view} isStreaming={isStreaming} />
       <Box flexDirection="row" flexGrow={1}>
         {view === 'sidebar' && (
@@ -259,16 +272,7 @@ export function App({ manager, config }: AppProps) {
             alignItems="center"
           >
             {messages.length === 0 && !isStreaming && !streaming && !error && (
-              <Box
-                flexDirection="column"
-                alignItems="center"
-                justifyContent="center"
-                flexGrow={1}
-              >
-                <Logo />
-                <Text> </Text>
-                <Text dimColor>{navHint(view)}</Text>
-              </Box>
+              <WelcomeScreen />
             )}
             {(messages.length > 0 || isStreaming || streaming || error) && (
               <Box flexDirection="column" flexGrow={1}>
@@ -290,10 +294,43 @@ export function App({ manager, config }: AppProps) {
   );
 }
 
-function navHint(view: View): string {
-  if (view === 'chat') return 'Ctrl+S sidebar · Ctrl+G settings · Ctrl+T new chat';
-  if (view === 'sidebar') return '↑/↓ navigate · Enter open · d delete · r rename · Esc back';
-  return '↑/↓ select · Enter switch · Esc back';
+function WelcomeScreen() {
+  return (
+    <Box
+      flexDirection="column"
+      alignItems="center"
+      justifyContent="center"
+      flexGrow={1}
+    >
+      <Logo />
+      <Text> </Text>
+      <Text color="cyan" bold>
+        Welcome to Silo
+      </Text>
+      <Text dimColor>
+        A CLI chat app. Type a message to get started.
+      </Text>
+      <Text> </Text>
+      <Box flexDirection="column" alignItems="flex-start">
+        <Text>
+          <Text color="yellow" bold>{'  Ctrl+T '.padEnd(14)}</Text>
+          <Text dimColor>New chat</Text>
+        </Text>
+        <Text>
+          <Text color="yellow" bold>{'  Ctrl+S '.padEnd(14)}</Text>
+          <Text dimColor>Sidebar</Text>
+        </Text>
+        <Text>
+          <Text color="yellow" bold>{'  Ctrl+G '.padEnd(14)}</Text>
+          <Text dimColor>Settings</Text>
+        </Text>
+        <Text>
+          <Text color="yellow" bold>{'  ?      '.padEnd(14)}</Text>
+          <Text dimColor>All shortcuts</Text>
+        </Text>
+      </Box>
+    </Box>
+  );
 }
 
 function Header({

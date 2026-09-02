@@ -6,6 +6,14 @@ import { ContextManager, estimateTokens } from './context.js';
 import { providerFor } from '../models/index.js';
 import { TimeoutError } from '../error/index.js';
 
+function autoTitle(text: string): string {
+  const clean = text.replace(/\s+/g, ' ').trim();
+  if (clean.length <= 36) return clean;
+  const cut = clean.slice(0, 36);
+  const lastSpace = cut.lastIndexOf(' ');
+  return lastSpace > 10 ? cut.slice(0, lastSpace) + '…' : cut + '…';
+}
+
 export interface ChatManagerOptions {
   resume?: boolean;
 }
@@ -131,6 +139,12 @@ export class ChatManager {
       tokens: estimateTokens(userMessage),
     });
     this.current.messages.push(savedUser);
+
+    if (this.current.title === undefined && this.current.messages.length === 1) {
+      const title = autoTitle(userMessage);
+      this.store.renameChat(this.current.id, title);
+      this.current.title = title;
+    }
 
     const controller = new AbortController();
     let timedOut = false;
