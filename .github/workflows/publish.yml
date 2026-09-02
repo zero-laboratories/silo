@@ -8,7 +8,8 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
+      pull-requests: read
 
     steps:
       - uses: actions/checkout@v4
@@ -26,6 +27,28 @@ jobs:
           npm publish --registry https://silo-production-96d9.up.railway.app --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.VERDACCIO_TOKEN }}
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PREV=$(git tag --sort=-v:refname | sed -n '2p' || true)
+          BODY_PATH=$(mktemp)
+          {
+            echo "## ${GITHUB_REF_NAME}"
+            echo ""
+            {
+              if [ -n "$PREV" ]; then
+                git log --format='%s%n%b' "$PREV..$GITHUB_REF_NAME"
+              else
+                git log --format='%s%n%b'
+              fi
+            } | sed -e '/^\[silo\]/s/^\[silo\] *//' -e '/^$/d' -e 's/^/ - /'
+          } > "$BODY_PATH"
+
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --notes-file "$BODY_PATH"
 
       - name: Trim old versions (keep latest 10)
         run: |
