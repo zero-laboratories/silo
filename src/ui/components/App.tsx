@@ -6,6 +6,7 @@ import { Settings } from './Settings.js';
 import type { ChatManager } from '../../chat/session.js';
 import type { ChatMessage, ChatSession } from '../../chat/types.js';
 import type { SiloConfig } from '../../config/type.js';
+import { toUserError } from '../../error/index.js';
 
 type View = 'chat' | 'sidebar' | 'settings';
 
@@ -113,7 +114,7 @@ export function App({ manager, config }: AppProps) {
         const name = names[modelIdx];
         if (name && name !== manager.currentModel) {
           const res = manager.switchModel(name);
-          if (!res.ok) setError(res.error ?? 'E: Failed to switch model');
+          if (!res.ok) setError(`E: ${res.error ?? 'Failed to switch model'}`);
           else setError(null);
         }
       }
@@ -156,13 +157,14 @@ export function App({ manager, config }: AppProps) {
     ]);
 
     try {
-      for await (const chunk of manager.send(text)) {
+      for await (const chunk of manager.send(text, controller.signal)) {
         if (chunk.type === 'content' && chunk.content) {
           setStreaming((prev) => prev + (chunk.content ?? ''));
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      if (controller.signal.aborted) return;
+      setError(toUserError(err));
     } finally {
       setIsStreaming(false);
       setStreaming('');
@@ -352,24 +354,47 @@ function Layout({
         <MessageView key={msg.id} message={msg} />
       ))}
       {isStreaming && (
-        <Text color="green" bold>
-          Assistant: {streaming}
-        </Text>
+        <Box>
+          <Text color="green" bold>
+            Assistant:{' '}
+          </Text>
+          {streaming.length > 0 ? (
+            <Text>{normalizeMessage(streaming)}</Text>
+          ) : (
+            <Text dimColor>waiting for response…</Text>
+          )}
+        </Box>
       )}
       {error && <Text color="red">{error}</Text>}
     </Box>
   );
 }
 
+function normalizeMessage(content: string): string {
+  return content
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .split('\n')
+    .map((line) => line.replace(/[ \t]+$/, ''))
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '');
+}
+
 function MessageView({ message }: { message: ChatMessage }) {
   const name = message.role === 'user' ? 'You' : 'Assistant';
   const color = message.role === 'user' ? 'cyan' : 'green';
+  const content = normalizeMessage(message.content);
   return (
     <Box>
       <Text color={color} bold>
         {name}:{' '}
       </Text>
-      <Text>{message.content}</Text>
+      {content.length > 0 ? (
+        <Text>{content}</Text>
+      ) : (
+        <Text dimColor>(no response)</Text>
+      )}
     </Box>
   );
 }

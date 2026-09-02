@@ -4,24 +4,26 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Store } from '../../../src/storage/database.js';
 import { ChatManager } from '../../../src/chat/session.js';
+import { TimeoutError } from '../../../src/error/index.js';
 import type { LLMProvider } from '../../../src/models/types.js';
 import type { ModelConfig } from '../../../src/config/type.js';
 
 async function makeManager(
   models: Record<string, ModelConfig>,
   current = 'claude',
+  provider?: LLMProvider,
 ): Promise<{ manager: ChatManager; store: Store }> {
   const { Store } = await import('../../../src/storage/database.js');
   const store = new Store(join(mkdtempSync(join(tmpdir(), 'silo-test-')), 'test.db'));
   const config = models[current];
-  const provider: LLMProvider = {
+  const activeProvider: LLMProvider = provider ?? {
     async *sendMessage() {
       yield { type: 'content', content: 'hello' };
     },
     getName: () => 'test',
     getDefaultModel: () => 'test-model',
   };
-  const manager = new ChatManager(store, provider, config, {}, models);
+  const manager = new ChatManager(store, activeProvider, config, {}, models);
   return { manager, store };
 }
 
@@ -103,6 +105,104 @@ describe('ChatManager', () => {
     manager.newChat();
     manager.deleteChat(first);
     expect(manager.session.id).not.toBe(first);
+    store.close();
+  });
+});
+
+function hangingProvider(): LLMProvider {
+  return {
+    async *sendMessage(_messages, _config, signal) {
+      await new Promise<never>((_, reject) => {
+        if (signal?.aborted) reject(new DOMException('aborted', 'AbortError'));
+        signal?.addEventListener('abort', () =>
+          reject(new DOMException('aborted', 'AbortError')),
+        );
+      });
+    },
+    getName: () => 'test',
+    getDefaultModel: () => 'test-model',
+  };
+}
+
+async function collect(manager: ChatManager, signal?: AbortSignal): Promise<string> {
+  let out = '';
+  for await (const chunk of manager.send('hi', signal)) {
+    if (chunk.type === 'content') out += chunk.content;
+  }
+  return out;
+}
+
+describe('ChatManager.send', () => {
+  it('persists the assistant message on a normal reply', async () => {
+    const { manager, store } = await makeManager(models);
+    expect(await collect(manager)).toBe('hello');
+    const msgs = manager.session.messages;
+    expect(msgs.filter((m) => m.role === 'user')).toHaveLength(1);
+    expect(msgs.filter((m) => m.role === 'assistant')).toHaveLength(1);
+    store.close();
+  });
+
+  it('raises a TimeoutError when the provider hangs', async () => {
+    const withTimeout: Record<string, ModelConfig> = {
+      claude: { provider: 'anthropic', model: 'x', timeout: 0.05 },
+    };
+    const { manager, store } = await makeManager(withTimeout, 'claude', hangingProvider());
+    await expect(collect(manager)).rejects.toThrow(TimeoutError);
+    store.close();
+  });
+
+  it('persists the partial response when the user aborts mid-stream', async () => {
+    const partialThenHang: LLMProvider = {
+      async *sendMessage(_messages, _config, signal) {
+        yield { type: 'content', content: 'partial answer' };
+        await new Promise<never>((_, reject) => {
+          if (signal?.aborted) reject(new DOMException('aborted', 'AbortError'));
+          signal?.addEventListener('abort', () =>
+            reject(new DOMException('aborted', 'AbortError')),
+          );
+        });
+      },
+      getName: () => 'test',
+      getDefaultModel: () => 'test-model',
+    };
+    const { manager, store } = await makeManager(models, 'claude', partialThenHang);
+    const controller = new AbortController();
+    const it = manager.send('hi', controller.signal);
+    const first = await it.next();
+    expect(first.value.type).toBe('content');
+    expect(first.value.content).toBe('partial answer');
+    controller.abort();
+    const second = await it.next();
+    expect(second.value.type).toBe('done');
+    const assistants = manager.session.messages.filter((m) => m.role === 'assistant');
+    expect(assistants).toHaveLength(1);
+    expect(assistants[0].content).toBe('partial answer');
+    store.close();
+  });
+
+  it('does not persist anything when aborted before any content', async () => {
+    const { manager, store } = await makeManager(models, 'claude', hangingProvider());
+    const controller = new AbortController();
+    const p = collect(manager, controller.signal);
+    await new Promise((r) => setTimeout(r, 5));
+    controller.abort();
+    await expect(p).resolves.toBe('');
+    expect(manager.session.messages.filter((m) => m.role === 'assistant')).toHaveLength(0);
+    store.close();
+  });
+
+  it('propagates provider errors without persisting a partial', async () => {
+    const busted: LLMProvider = {
+      async *sendMessage() {
+        yield { type: 'content', content: 'so close' };
+        throw new Error('model exploded');
+      },
+      getName: () => 'test',
+      getDefaultModel: () => 'test-model',
+    };
+    const { manager, store } = await makeManager(models, 'claude', busted);
+    await expect(collect(manager)).rejects.toThrow('model exploded');
+    expect(manager.session.messages.filter((m) => m.role === 'assistant')).toHaveLength(0);
     store.close();
   });
 });

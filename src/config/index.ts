@@ -3,6 +3,8 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { parse } from 'smol-toml';
 import { getDefaults } from './defaults.js';
+import { validateConfig } from './validate.js';
+import { SiloError } from '../error/index.js';
 import type { SiloConfig } from './type.js';
 
 export function configPath(): string {
@@ -24,13 +26,27 @@ export function loadConfig(path?: string): SiloConfig {
   }
 
   const raw = readFileSync(configFile, 'utf8');
-  const parsed = parse(raw) as unknown as SiloConfig;
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = parse(raw) as unknown as Record<string, unknown>;
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new SiloError(`Invalid TOML in ${configFile}: ${detail}`);
+  }
 
   const defaults = getDefaults();
-  return {
-    general: { ...defaults.general, ...parsed.general },
-    models: { ...defaults.models, ...(parsed.models ?? {}) },
+  const config: SiloConfig = {
+    general: {
+      ...defaults.general,
+      ...(parsed.general as SiloConfig['general'] | undefined),
+    },
+    models: {
+      ...defaults.models,
+      ...((parsed.models as SiloConfig['models'] | undefined) ?? {}),
+    },
   };
+  validateConfig(config, configFile);
+  return config;
 }
 
 function createTemplate(path: string): SiloConfig {

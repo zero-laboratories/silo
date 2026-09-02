@@ -1,4 +1,5 @@
 import type { StreamChunk } from './types.js';
+import { ApiError } from '../error/index.js';
 
 export interface SseEvent {
   data: string;
@@ -10,7 +11,14 @@ export async function* readSse(
 ): AsyncGenerator<SseEvent> {
   if (!response.ok || !response.body) {
     const text = await response.text();
-    throw new Error(`${name} API error (${response.status}): ${text}`);
+    let detail = '';
+    try {
+      const parsed = JSON.parse(text) as { error?: { message?: string } };
+      detail = parsed.error?.message ?? '';
+    } catch {
+      detail = text.slice(0, 200);
+    }
+    throw new ApiError(response.status, `${name} ${detail}`.trim());
   }
 
   const reader = response.body.getReader();

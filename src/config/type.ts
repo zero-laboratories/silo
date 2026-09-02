@@ -5,6 +5,7 @@ export interface ModelConfig {
   base_url?: string;
   temperature?: number;
   max_tokens?: number;
+  timeout?: number;
 }
 
 export interface SiloConfig {

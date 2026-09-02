@@ -112,6 +112,8 @@ describe('provider streaming', () => {
     process.env.TEST_API_KEY = 'k';
     mockFetch(new Response('boom', { status: 401 }));
     const provider = new OpenAIProvider();
-    await expect(collect(provider, configWith('openai'))).rejects.toThrow(/OpenAI API error \(401\)/);
+    await expect(collect(provider, configWith('openai'))).rejects.toMatchObject({
+      status: 401,
+    });
   });
 });

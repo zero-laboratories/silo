@@ -4,6 +4,7 @@ import type { ModelConfig } from '../config/type.js';
 import type { ChatMessage, ChatSession } from './types.js';
 import { ContextManager, estimateTokens } from './context.js';
 import { providerFor } from '../models/index.js';
+import { TimeoutError } from '../error/index.js';
 
 export interface ChatManagerOptions {
   resume?: boolean;
@@ -123,7 +124,7 @@ export class ChatManager {
     return this.config;
   }
 
-  async *send(userMessage: string): AsyncGenerator<StreamChunk> {
+  async *send(userMessage: string, externalSignal?: AbortSignal): AsyncGenerator<StreamChunk> {
     const savedUser: ChatMessage = this.store.appendMessage(this.current.id, {
       role: 'user',
       content: userMessage,
@@ -131,23 +132,60 @@ export class ChatManager {
     });
     this.current.messages.push(savedUser);
 
+    const controller = new AbortController();
+    let timedOut = false;
+    const onAbort = () => controller.abort();
+    externalSignal?.addEventListener('abort', onAbort);
+    const timeoutMs = this.config.timeout != null ? this.config.timeout * 1000 : undefined;
+    const timer =
+      timeoutMs != null
+        ? setTimeout(() => {
+            timedOut = true;
+            controller.abort();
+          }, timeoutMs)
+        : undefined;
+
     const manager = new ContextManager(this.config.max_tokens ?? 8000);
     const context = manager.buildContext(this.current.messages, this.current.systemPrompt);
 
     let response = '';
-    for await (const chunk of this.provider.sendMessage(context, this.config)) {
-      if (chunk.type === 'content' && chunk.content) {
-        response += chunk.content;
-        yield chunk;
+    let interrupted = false;
+    try {
+      for await (const chunk of this.provider.sendMessage(context, this.config, controller.signal)) {
+        if (chunk.type === 'content' && chunk.content) {
+          response += chunk.content;
+          yield chunk;
+        }
       }
+    } catch (err) {
+      interrupted = true;
+      if (timedOut) {
+        throw new TimeoutError(
+          `${this.config.provider}/${this.config.model} did not respond within ${this.config.timeout}s`,
+        );
+      }
+      if (!externalSignal?.aborted) {
+        throw err;
+      }
+      // User aborted: keep any partial response, do not surface an error.
+    } finally {
+      if (timer != null) clearTimeout(timer);
+      externalSignal?.removeEventListener('abort', onAbort);
     }
 
-    const savedAssistant: ChatMessage = this.store.appendMessage(this.current.id, {
-      role: 'assistant',
-      content: response,
-      tokens: estimateTokens(response),
-    });
-    this.current.messages.push(savedAssistant);
+    if (interrupted && response.length === 0) {
+      yield { type: 'done' };
+      return;
+    }
+
+    if (response.length > 0) {
+      const savedAssistant: ChatMessage = this.store.appendMessage(this.current.id, {
+        role: 'assistant',
+        content: response,
+        tokens: estimateTokens(response),
+      });
+      this.current.messages.push(savedAssistant);
+    }
     yield { type: 'done' };
   }
 }
