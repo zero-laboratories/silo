@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Box, Text } from 'ink';
 import type { ChatSession } from '../../chat/types.js';
 
@@ -19,6 +19,19 @@ interface SidebarProps {
 }
 
 export function Sidebar({ chats, activeId, selected }: SidebarProps) {
+  const rows = useMemo(
+    () =>
+      chats.map((chat) => {
+        const tags = chat.tags ?? [];
+        return {
+          key: chat.id,
+          label: chatLabel(chat),
+          tagsText: tags.length > 0 ? `  #${tags.join(' #')}` : '',
+        };
+      }),
+    [chats],
+  );
+
   return (
     <Box
       flexDirection="column"
@@ -35,20 +48,19 @@ export function Sidebar({ chats, activeId, selected }: SidebarProps) {
       </Box>
       <Text> </Text>
       {chats.length === 0 && <Text dimColor>No conversations yet.</Text>}
-      {chats.map((chat, i) => {
-        const isActive = chat.id === activeId;
+      {rows.map((row, i) => {
+        const isActive = row.key === activeId;
         const isSelected = i === selected;
-        const tags = chat.tags ?? [];
         return (
           <Text
-            key={chat.id}
+            key={row.key}
             color={isSelected ? 'cyan' : isActive ? 'green' : undefined}
             bold={isActive}
             inverse={isSelected}
           >
             {isActive ? '● ' : '  '}
-            {chatLabel(chat)}
-            {tags.length > 0 && <Text dimColor>  #{tags.join(' #')}</Text>}
+            {row.label}
+            {row.tagsText.length > 0 && <Text dimColor>{row.tagsText}</Text>}
           </Text>
         );
       })}

@@ -1,10 +1,11 @@
 
 # Silo
 
-> ## ALPHA — ROUGH AROUND THE EDGES
+> ## BETA PREP — STABILIZING
 >
-> This is an early, in-progress build. Chat works, but expect rough
-> edges, missing features, and breaking changes. Nothing is stable yet.
+> Feature-complete against the roadmap through v0.6 and heading into pre-beta
+> stability. Chat, search, tagging, per-chat system prompts, and message
+> editing all work. Expect minor rough edges as we harden things toward v1.
 
 ```
  ███████╗  ██╗ ██╗       ██████╗

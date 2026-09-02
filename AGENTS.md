@@ -45,6 +45,37 @@ Always run `pnpm typecheck` and `pnpm lint` before committing. If either fails, 
 - Keep commits focused. One logical change per commit.
 - Don't commit secrets, API keys, or credentials. Ever.
 
+## Bug workflow (issues → PR)
+
+When a bug is found, track it with an issue **before** fixing it:
+
+1. **File the issue** with `gh`:
+   ```bash
+   gh issue create --label bug --title "[bug] <short description>" --body "…
+   ```
+
+2. **Reference the issue** in the fix. Create a branch off `dev`, then when
+   committing the fix and opening the PR, link them with a keyword:
+   ```bash
+   git checkout dev && git checkout -b fix/<short-name>
+   # commit the fix; reference the issue in the PR body or commit:
+   #   Fixes #<issue-num>
+   git push origin fix/<short-name>
+   gh pr create --base dev --head fix/<short-name> --title "fix: <description>" --body "Fixes #<issue-num>"
+   ```
+   A `Fixes #n` / `Closes #n` reference automatically closes the issue when the
+   PR merges into `dev`.
+
+3. **Review + merge** the PR into `dev` (CI `checks` must pass). `Fixes #n` only
+   auto-closes the issue when the PR merges into the **default branch** (`main`),
+   so after merging a fix into `dev`, close the linked issue manually:
+   ```bash
+   gh issue close <issue-num> --comment "Fixed in dev via PR #<pr>; ships in next release."
+   ```
+
+Rule: **bug found → issue first, fix PR second, merge third.** Never jump
+straight to a fix PR without an issue for a bug.
+
 ## Branching & release workflow
 
 Two long-lived branches:
@@ -70,6 +101,26 @@ Two long-lived branches:
 
 `main` is protected from direct pushes — releases go through the PR. Keep each
 release's commits focused and squashed into one `[silo] vX.Y.Z` commit.
+
+**Branch alignment rule:**
+
+- Between releases, `dev` stays **4-10 commits ahead** of `main` (nightly work
+  accumulates there).
+- **On every release** (`dev` → `main` via PR + squash), the two branches must
+  **converge to equal**: after merging and tagging, reset `dev` to `main`'s tip
+  and re-apply any genuinely-new dev commits that weren't part of this release.
+
+Resyncing dev to main (do this whenever they diverge in content):
+```bash
+git checkout dev
+git fetch origin
+git reset --hard origin/main      # align dev to main's history
+# re-apply any NOT-yet-released dev-only commits (cherry-pick), then:
+git push --force-with-lease origin dev
+```
+Because releases squash PRs into one commit, never `git merge main` into dev
+after a squash — it produces duplicate-content conflicts (same change as a raw
+commit and inside the squash). Reset + cherry-pick avoids that.
 
 ## Global install gotcha (pnpm catalog pin)
 
