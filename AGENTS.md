@@ -98,6 +98,26 @@ Two long-lived branches:
 `main` is protected from direct pushes — releases go through the PR. Keep each
 release's commits focused and squashed into one `[silo] vX.Y.Z` commit.
 
+**Branch alignment rule:**
+
+- Between releases, `dev` stays **4-10 commits ahead** of `main` (nightly work
+  accumulates there).
+- **On every release** (`dev` → `main` via PR + squash), the two branches must
+  **converge to equal**: after merging and tagging, reset `dev` to `main`'s tip
+  and re-apply any genuinely-new dev commits that weren't part of this release.
+
+Resyncing dev to main (do this whenever they diverge in content):
+```bash
+git checkout dev
+git fetch origin
+git reset --hard origin/main      # align dev to main's history
+# re-apply any NOT-yet-released dev-only commits (cherry-pick), then:
+git push --force-with-lease origin dev
+```
+Because releases squash PRs into one commit, never `git merge main` into dev
+after a squash — it produces duplicate-content conflicts (same change as a raw
+commit and inside the squash). Reset + cherry-pick avoids that.
+
 ## Global install gotcha (pnpm catalog pin)
 
 `pnpm add -g @zeropbc/silo@latest` can resolve to a stale version because the
