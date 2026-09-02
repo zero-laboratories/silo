@@ -26,12 +26,12 @@ Silo is a minimal, model-agnostic CLI chat application for Linux. It prioritizes
 | Component | Choice | Rationale |
 |-----------|--------|-----------|
 | Language | TypeScript | Type-safe, contributor-friendly, modern tooling |
-| TUI Framework | Ink + React | React for terminals, composable components, elegant |
+| TUI Framework | OpenTUI + React | Native terminal bindings (FFI), richer rendering than Ink |
 | CLI Framework | commander.js | Battle-tested, minimal, familiar to Node devs |
 | Storage | SQLite (better-sqlite3) | Queryable, ACID compliance, single-file portability |
 | Config Format | TOML (smol-toml) | Human-readable, structured, no extra dependencies |
 | HTTP Client | node-fetch | Lightweight, no supply chain issues, spec-compliant |
-| Runtime | Node.js 18+ | LTS, widely available, built-in permissions model |
+| Runtime | Node.js 26.4+ | OpenTUI native FFI requires `--experimental-ffi` |
 | Build Tool | esbuild | Fast, minimal config, easy tree-shaking |
 | Package Manager | pnpm | Fast, efficient, lock file by default |
 
@@ -46,9 +46,9 @@ Silo is a minimal, model-agnostic CLI chat application for Linux. It prioritizes
 ├─────────────────────────────────────────────────────────┤
 │                                                         │
 │  ┌────────────────────────────────────────────────────┐ │
-│  │          TUI Layer (Ink + React)                   │ │
+│  │          TUI Layer (OpenTUI + React)               │ │
 │  │  • Component tree (Chat, Sidebar, Input, etc)      │ │
-│  │  • Key bindings (Ctrl+C, Ctrl+D, etc)              │ │
+│  │  • Key bindings (Ctrl+C, Ctrl+D, Ctrl+X, etc)      │ │
 │  │  • Streaming render updates                        │ │
 │  │  • Error display                                   │ │
 │  └────────────────────────────────────────────────────┘ │
@@ -113,7 +113,7 @@ Silo is a minimal, model-agnostic CLI chat application for Linux. It prioritizes
 ```tsx
 // ui/components/App.tsx
 import React, { useState, useEffect } from 'react';
-import { Box, Text } from 'ink';
+import { useKeyboard } from '@opentui/react';
 import { Layout } from './Layout.js';
 import { useChat } from '../hooks/useChat.js';
 
@@ -122,7 +122,7 @@ export const App: React.FC = () => {
   const { messages, sendMessage, isStreaming, currentResponse } = useChat();
 
   return (
-    <Box flexDirection="column" height="100%">
+    <box flexDirection="column" height="100%">
       <Header 
         view={view} 
         onViewChange={setView} 
@@ -135,7 +135,7 @@ export const App: React.FC = () => {
         currentResponse={currentResponse}
         onSendMessage={sendMessage}
       />
-    </Box>
+    </box>
   );
 };
 ```
@@ -648,7 +648,7 @@ silo/
 
 ### Phase 1: MVP (Week 1)
 - [ ] Project scaffolding (pnpm init, TypeScript, esbuild)
-- [ ] Ink + React setup
+- [x] OpenTUI + React setup
 - [ ] SQLite integration
 - [ ] Claude provider (Anthropic)
 - [ ] Basic chat UI (input, display, navigation)
@@ -719,15 +719,15 @@ silo/
 
 ---
 
-## Appendix: Ink Component Example
+## Appendix: OpenTUI Component Example
 
 **Example Chat View Component:**
 
 ```tsx
 // ui/components/ChatView.tsx
 import React from 'react';
-import { Box, Text } from 'ink';
 import { ChatMessage } from '../../chat/types.js';
+import { BOLD, DIM } from '../styles.js';
 
 interface ChatViewProps {
   messages: ChatMessage[];
@@ -741,24 +741,24 @@ export const ChatView: React.FC<ChatViewProps> = ({
   currentResponse 
 }) => {
   return (
-    <Box flexDirection="column" padding={1}>
+    <box flexDirection="column" padding={1}>
       {messages.map((msg) => (
-        <Box key={msg.id} marginBottom={1}>
-          <Text color={msg.role === 'user' ? 'cyan' : 'green'} bold>
+        <box key={msg.id} marginBottom={1}>
+          <text fg={msg.role === 'user' ? 'cyan' : 'green'} attributes={BOLD}>
             {msg.role === 'user' ? 'You: ' : 'Assistant: '}
-          </Text>
-          <Text>{msg.content}</Text>
-        </Box>
+          </text>
+          <text>{msg.content}</text>
+        </box>
       ))}
       
       {isStreaming && currentResponse && (
-        <Box>
-          <Text color="green" bold>Assistant: </Text>
-          <Text>{currentResponse}</Text>
-          <Text color="gray">▌</Text>
-        </Box>
+        <box>
+          <text fg="green" attributes={BOLD}>Assistant: </text>
+          <text>{currentResponse}</text>
+          <text fg="gray">▌</text>
+        </box>
       )}
-    </Box>
+    </box>
   );
 };
 ```
