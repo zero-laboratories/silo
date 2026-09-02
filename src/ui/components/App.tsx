@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Box, Text, useInput, useWindowSize } from 'ink';
 import { Logo } from './Logo.js';
 import { Sidebar } from './Sidebar.js';
@@ -735,6 +735,10 @@ function SearchResults({
   results: ChatMessage[];
   selected: number;
 }) {
+  const normalized = useMemo(
+    () => results.map((msg) => ({ name: msg.role === 'user' ? 'You' : 'Assistant', content: normalizeMessage(msg.content) })),
+    [results],
+  );
   if (results.length === 0) {
     return (
       <Box flexDirection="column" alignItems="center">
@@ -744,16 +748,14 @@ function SearchResults({
   }
   return (
     <Box flexDirection="column" width="100%" paddingX={1}>
-      {results.map((msg, i) => {
-        const name = msg.role === 'user' ? 'You' : 'Assistant';
-        const color = msg.role === 'user' ? 'cyan' : 'green';
-        const content = normalizeMessage(msg.content);
+      {normalized.map((row, i) => {
+        const color = row.name === 'You' ? 'cyan' : 'green';
         return (
-          <Box key={msg.id}>
+          <Box key={results[i].id}>
             <Text color={i === selected ? 'yellow' : color} bold inverse={i === selected}>
-              {i === selected ? '» ' : '  '}{name}:{' '}
+              {i === selected ? '» ' : '  '}{row.name}:{' '}
             </Text>
-            <Text inverse={i === selected}>{content}</Text>
+            <Text inverse={i === selected}>{row.content}</Text>
           </Box>
         );
       })}
