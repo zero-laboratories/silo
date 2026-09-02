@@ -10,9 +10,11 @@ const options = {
   bundle: true,
   outfile: 'dist/index.js',
   platform: 'node',
-  target: 'node18',
+  target: 'node26',
   format: 'esm',
   packages: 'external',
+  jsx: 'automatic',
+  jsxImportSource: '@opentui/react',
   banner: {
     js: '#!/usr/bin/env node',
   },

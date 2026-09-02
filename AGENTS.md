@@ -7,7 +7,7 @@ Silo is a CLI chat application built with TypeScript, Ink (React for terminals),
 ## Dev environment tips
 
 - **Package manager:** pnpm. Never use npm or yarn.
-- **Node version:** 18+ required.
+- **Node version:** 26.4+ required (OpenTUI needs `--experimental-ffi`; the CLI self-bootstraps the flag).
 - **Build:** `pnpm build` (uses esbuild).
 - **Dev mode:** `pnpm dev` (watches and rebuilds).
 - **Type check:** `pnpm typecheck` (runs `tsc --noEmit`).
