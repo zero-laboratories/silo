@@ -14,6 +14,19 @@ function autoTitle(text: string): string {
   return lastSpace > 10 ? cut.slice(0, lastSpace) + '…' : cut + '…';
 }
 
+const TITLE_SYSTEM_PROMPT =
+  'You are a title generator. Given a short conversation, generate a concise title (max 36 characters) that summarizes what the conversation is about. Reply with ONLY the title text — no quotes, no punctuation at the end, no explanation.';
+
+function sanitizeTitle(raw: string): string | null {
+  let t = raw.replace(/[\r\n]+/g, ' ').trim();
+  t = t.replace(/^["'`]+|["'`]+$/g, '').trim();
+  if (t.length === 0 || t.length > 120) return null;
+  if (t.length <= 36) return t;
+  const cut = t.slice(0, 36);
+  const lastSpace = cut.lastIndexOf(' ');
+  return lastSpace > 10 ? cut.slice(0, lastSpace) : cut;
+}
+
 export interface ChatManagerOptions {
   resume?: boolean;
 }
@@ -105,6 +118,61 @@ export class ChatManager {
     if (this.current.id === id) {
       this.current = this.store.getChat(id) ?? this.current;
     }
+  }
+
+  async generateTitle(id: string): Promise<string | null> {
+    const chat = this.store.getChat(id);
+    if (!chat) return null;
+    const firstUser = chat.messages.find((m) => m.role === 'user');
+    const firstAssistant = chat.messages.find((m) => m.role === 'assistant');
+    if (!firstUser) return null;
+
+    const context: ChatMessage[] = [
+      {
+        role: 'user',
+        content: firstUser.content,
+        timestamp: firstUser.timestamp,
+        id: firstUser.id,
+      },
+    ];
+    if (firstAssistant) {
+      context.push({
+        role: 'assistant',
+        content: firstAssistant.content,
+        timestamp: firstAssistant.timestamp,
+        id: firstAssistant.id,
+      });
+    }
+
+    try {
+      const controller = new AbortController();
+      const timeoutMs = this.config.timeout != null ? this.config.timeout * 1000 : 15000;
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      let suggestion = '';
+      for await (const chunk of this.provider.sendMessage(
+        [
+          { role: 'system', content: TITLE_SYSTEM_PROMPT, timestamp: new Date(), id: 'title-system' },
+          ...context,
+        ],
+        this.config,
+        controller.signal,
+      )) {
+        if (chunk.type === 'content' && chunk.content) suggestion += chunk.content;
+      }
+      clearTimeout(timer);
+
+      const title = sanitizeTitle(suggestion);
+      if (title) {
+        this.store.renameChat(id, title);
+        if (this.current.id === id) {
+          this.current = this.store.getChat(id) ?? this.current;
+        }
+        return title;
+      }
+    } catch {
+      // Background title generation is best-effort: keep the autoTitle fallback.
+    }
+    return null;
   }
 
   modelsByName(): string[] {

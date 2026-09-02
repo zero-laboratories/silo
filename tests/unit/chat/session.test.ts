@@ -133,6 +133,76 @@ async function collect(manager: ChatManager, signal?: AbortSignal): Promise<stri
 }
 
 describe('ChatManager.send', () => {
+  it('auto-generates a title from the first user message', async () => {
+    const { manager, store } = await makeManager(models);
+    await collect(manager);
+    expect(manager.session.title).toBe('hi');
+    store.close();
+  });
+
+  it('truncates the auto title to 36 chars on a word boundary', async () => {
+    const longMsg =
+      'I want to plan a very long and detailed trip around Japan that is focused on trains and rail passes';
+    const { manager, store } = await makeManager(models);
+    for await (const _ of manager.send(longMsg)) void _;
+    expect(manager.session.title?.length).toBeLessThanOrEqual(37);
+    expect(manager.session.title?.endsWith('…')).toBe(true);
+    store.close();
+  });
+
+  it('refreshes the title from a background AI generation', async () => {
+    const aiProvider: LLMProvider = {
+      async *sendMessage() {
+        yield { type: 'content', content: 'Japan Train Travel Planning' };
+      },
+      getName: () => 'test',
+      getDefaultModel: () => 'test-model',
+    };
+    const { manager, store } = await makeManager(models, 'claude', aiProvider);
+    await collect(manager);
+    const title = await manager.generateTitle(manager.session.id);
+    expect(title).toBe('Japan Train Travel Planning');
+    expect(manager.session.title).toBe('Japan Train Travel Planning');
+    store.close();
+  });
+
+  it('truncates an overlong AI-generated title to 36 chars', async () => {
+    const aiProvider: LLMProvider = {
+      async *sendMessage() {
+        yield { type: 'content', content: 'the quick brown fox jumps over the lazy dog' };
+      },
+      getName: () => 'test',
+      getDefaultModel: () => 'test-model',
+    };
+    const { manager, store } = await makeManager(models, 'claude', aiProvider);
+    await collect(manager);
+    const title = await manager.generateTitle(manager.session.id);
+    expect(title?.length).toBeLessThanOrEqual(36);
+    store.close();
+  });
+
+  it('keeps the auto title when AI generation fails', async () => {
+    let calls = 0;
+    const flaky: LLMProvider = {
+      async *sendMessage() {
+        calls++;
+        if (calls === 1) {
+          yield { type: 'content', content: 'hello' };
+          return;
+        }
+        throw new Error('boom');
+      },
+      getName: () => 'test',
+      getDefaultModel: () => 'test-model',
+    };
+    const { manager, store } = await makeManager(models, 'claude', flaky);
+    await collect(manager);
+    const title = await manager.generateTitle(manager.session.id);
+    expect(title).toBeNull();
+    expect(manager.session.title).toBe('hi');
+    store.close();
+  });
+
   it('persists the assistant message on a normal reply', async () => {
     const { manager, store } = await makeManager(models);
     expect(await collect(manager)).toBe('hello');

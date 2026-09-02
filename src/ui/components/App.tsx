@@ -182,6 +182,16 @@ export function App({ manager, config }: AppProps) {
       setStreaming('');
       setMessages(manager.session.messages);
       setChats(manager.listChats());
+      const chat = manager.session;
+      const isFirstExchange =
+        chat.messages.filter((m) => m.role === 'user').length === 1 &&
+        chat.messages.some((m) => m.role === 'assistant');
+      if (isFirstExchange) {
+        const id = manager.session.id;
+        void manager.generateTitle(id).then((title) => {
+          if (title) setChats(manager.listChats());
+        });
+      }
     }
   }
 
