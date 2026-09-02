@@ -45,6 +45,33 @@ Always run `pnpm typecheck` and `pnpm lint` before committing. If either fails, 
 - Keep commits focused. One logical change per commit.
 - Don't commit secrets, API keys, or credentials. Ever.
 
+## Bug workflow (issues → PR)
+
+When a bug is found, track it with an issue **before** fixing it:
+
+1. **File the issue** with `gh`:
+   ```bash
+   gh issue create --label bug --title "[bug] <short description>" --body "…
+   ```
+
+2. **Reference the issue** in the fix. Create a branch off `dev`, then when
+   committing the fix and opening the PR, link them with a keyword:
+   ```bash
+   git checkout dev && git checkout -b fix/<short-name>
+   # commit the fix; reference the issue in the PR body or commit:
+   #   Fixes #<issue-num>
+   git push origin fix/<short-name>
+   gh pr create --base dev --head fix/<short-name> --title "fix: <description>" --body "Fixes #<issue-num>"
+   ```
+   A `Fixes #n` / `Closes #n` reference automatically closes the issue when the
+   PR merges into `dev`.
+
+3. **Review + merge** the PR into `dev` (1 approval, CI `checks` must pass).
+   The linked issue closes itself via the keyword.
+
+Rule: **bug found → issue first, fix PR second, merge third.** Never jump
+straight to a fix PR without an issue for a bug.
+
 ## Branching & release workflow
 
 Two long-lived branches:
