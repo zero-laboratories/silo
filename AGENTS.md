@@ -66,8 +66,12 @@ When a bug is found, track it with an issue **before** fixing it:
    A `Fixes #n` / `Closes #n` reference automatically closes the issue when the
    PR merges into `dev`.
 
-3. **Review + merge** the PR into `dev` (1 approval, CI `checks` must pass).
-   The linked issue closes itself via the keyword.
+3. **Review + merge** the PR into `dev` (CI `checks` must pass). `Fixes #n` only
+   auto-closes the issue when the PR merges into the **default branch** (`main`),
+   so after merging a fix into `dev`, close the linked issue manually:
+   ```bash
+   gh issue close <issue-num> --comment "Fixed in dev via PR #<pr>; ships in next release."
+   ```
 
 Rule: **bug found → issue first, fix PR second, merge third.** Never jump
 straight to a fix PR without an issue for a bug.
