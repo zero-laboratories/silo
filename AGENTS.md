@@ -45,6 +45,32 @@ Always run `pnpm typecheck` and `pnpm lint` before committing. If either fails, 
 - Keep commits focused. One logical change per commit.
 - Don't commit secrets, API keys, or credentials. Ever.
 
+## Branching & release workflow
+
+Two long-lived branches:
+
+- **`dev`** — nightly/bleeding-edge. All new work lands here first. Build from
+  source (`pnpm install && pnpm dev` or `pnpm build && node dist/index.js`).
+- **`main`** — stable releases. Only production-ready code, matched to a tagged
+  publish (`@zeropbc/silo@<version>` on the Verdaccio registry).
+
+**Feature development:** branch off `dev`, merge PRs back into `dev`.
+
+**Release flow (`dev` → `main`):**
+1. Complete work on `dev` and verify: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`.
+2. Bump the version in `package.json` and `src/cli.ts` to the next release.
+3. Open a PR from `dev` → `main`, title `[silo] vX.Y.Z: <description>`.
+4. Run the full check suite once more on `main` before merging.
+5. Merge the PR, then tag and push:
+   ```bash
+   git tag vX.Y.Z
+   git push origin main --tags
+   ```
+6. The tag triggers the publish workflow; verify `@zeropbc/silo@X.Y.Z` on the registry.
+
+`main` is protected from direct pushes — releases go through the PR. Keep each
+release's commits focused and squashed into one `[silo] vX.Y.Z` commit.
+
 ## Global install gotcha (pnpm catalog pin)
 
 `pnpm add -g @zeropbc/silo@latest` can resolve to a stale version because the
