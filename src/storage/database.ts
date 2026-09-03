@@ -68,7 +68,9 @@ export class Store {
     const rows = this.db
       .prepare('SELECT * FROM chats ORDER BY updated_at DESC')
       .all() as ChatRow[];
-    return rows.map((r) => this.toSession(r));
+    return rows
+      .map((r) => this.toSession(r))
+      .filter((c) => c.messages.length > 0 || Boolean(c.title));
   }
 
   getChat(id: string): ChatSession | null {

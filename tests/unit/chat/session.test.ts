@@ -39,9 +39,18 @@ describe('ChatManager', () => {
     store.close();
   });
 
-  it('lists chats created', async () => {
+  it('hides empty chats from the list', async () => {
     const { manager, store } = await makeManager(models);
+    expect(manager.listChats()).toHaveLength(0);
+    store.close();
+  });
+
+  it('lists chats once they have content', async () => {
+    const { manager, store } = await makeManager(models);
+    const id = manager.session.id;
+    for await (const _ of manager.send('hello')) void _;
     expect(manager.listChats()).toHaveLength(1);
+    expect(manager.listChats()[0]?.id).toBe(id);
     store.close();
   });
 
@@ -50,8 +59,7 @@ describe('ChatManager', () => {
     const first = manager.session.id;
     manager.newChat();
     expect(manager.session.id).not.toBe(first);
-    const created = manager.listChats();
-    expect(created).toHaveLength(2);
+    expect(manager.listChats()).toHaveLength(0);
     expect(manager.switchChat(first)).toBe(true);
     expect(manager.session.id).toBe(first);
     store.close();
@@ -85,8 +93,7 @@ describe('ChatManager', () => {
     const first = manager.session.id;
     manager.deleteChat(first);
     expect(manager.session.id).not.toBe(first);
-    expect(manager.listChats()).toHaveLength(1);
-    expect(manager.listChats()[0]?.id).toBe(manager.session.id);
+    expect(manager.listChats()).toHaveLength(0);
     store.close();
   });
 
@@ -110,6 +117,7 @@ describe('ChatManager', () => {
 
   it('sets tags on the current chat', async () => {
     const { manager, store } = await makeManager(models);
+    for await (const _ of manager.send('hello')) void _;
     const id = manager.session.id;
     manager.setChatTags(id, ['rust', 'docs']);
     expect(manager.session.tags).toEqual(['rust', 'docs']);

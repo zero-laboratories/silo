@@ -1,7 +1,8 @@
 import { program } from 'commander';
 import { writeFileSync } from 'node:fs';
-import { render } from 'ink';
-import React from 'react';
+import { createElement } from 'react';
+import { createCliRenderer } from '@opentui/core';
+import { createRoot } from '@opentui/react';
 import { Store } from './storage/database.js';
 import { loadConfig, dbPath, configPath } from './config/index.js';
 import { providerFor } from './models/index.js';
@@ -13,7 +14,7 @@ export function buildCli(): typeof program {
   program
     .name('silo')
     .description('A minimal, model-agnostic CLI chat app for Linux.')
-    .version('0.7.0');
+    .version('0.8.0');
 
   program
     .command('chat')
@@ -45,24 +46,43 @@ export function buildCli(): typeof program {
 }
 
 function runChat(modelName?: string, resume?: boolean) {
-  try {
-    const config = loadConfig();
-    const name = modelName ?? config.general.default_model;
-    const model = config.models[name];
-    if (!model) {
-      console.error(`E: Model "${name}" is not configured in ${configPath()}`);
+  void (async () => {
+    try {
+      const config = loadConfig();
+      const name = modelName ?? config.general.default_model;
+      const model = config.models[name];
+      if (!model) {
+        console.error(`E: Model "${name}" is not configured in ${configPath()}`);
+        process.exit(1);
+      }
+
+      const provider = providerFor(model.provider);
+      const store = new Store();
+      const manager = new ChatManager(store, provider, model, { resume });
+
+      const renderer = await createCliRenderer({
+        screenMode: 'alternate-screen',
+        exitOnCtrlC: false,
+        exitSignals: ['SIGTERM'],
+        clearOnShutdown: true,
+      });
+
+      const root = createRoot(renderer);
+      root.render(createElement(App, { manager, config, onRequestClose }));
+
+      function onRequestClose() {
+        try {
+          root.unmount();
+        } finally {
+          renderer.destroy();
+          process.exit(0);
+        }
+      }
+    } catch (err) {
+      console.error(toUserError(err));
       process.exit(1);
     }
-
-    const provider = providerFor(model.provider);
-    const store = new Store();
-    const manager = new ChatManager(store, provider, model, { resume });
-
-    render(React.createElement(App, { manager, config }), { alternateScreen: true });
-  } catch (err) {
-    console.error(toUserError(err));
-    process.exit(1);
-  }
+  })();
 }
 
 function exportChat(chatId: string, out?: string) {
