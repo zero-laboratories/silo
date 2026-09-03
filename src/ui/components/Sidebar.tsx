@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import type { ChatSession } from '../../chat/types.js';
-import { BOLD, DIM, INVERSE } from '../styles.js';
+import { BOLD, DIM, INVERSE, color } from '../styles.js';
 
 export function chatLabel(chat: ChatSession): string {
   if (chat.title) return chat.title;
@@ -36,33 +36,36 @@ export function Sidebar({ chats, activeId, selected }: SidebarProps) {
     <box
       flexDirection="column"
       width={34}
+      flexGrow={1}
       borderStyle="single"
-      borderColor="gray"
+      borderColor={color.muted}
       paddingX={1}
     >
-      <box justifyContent="space-between">
-        <text fg="cyan" attributes={BOLD}>
+      <box width="100%" flexDirection="row" justifyContent="space-between" alignItems="center">
+        <text fg={color.primary} attributes={BOLD}>
           Conversations
         </text>
         <text attributes={DIM}>Esc</text>
       </box>
       <text> </text>
-      {chats.length === 0 && <text attributes={DIM}>No conversations yet.</text>}
-      {rows.map((row, i) => {
-        const isActive = row.key === activeId;
-        const isSelected = i === selected;
-        return (
-          <text
-            key={row.key}
-            fg={isSelected ? 'cyan' : isActive ? 'green' : undefined}
-            attributes={isSelected ? INVERSE : isActive ? BOLD : undefined}
-          >
-            {isActive ? '● ' : '  '}
-            {row.label}
-            {row.tagsText.length > 0 && <span attributes={DIM}>{row.tagsText}</span>}
-          </text>
-        );
-      })}
+      <scrollbox flexGrow={1} scrollY>
+        {chats.length === 0 && <text attributes={DIM}>No conversations yet.</text>}
+        {rows.map((row, i) => {
+          const isActive = row.key === activeId;
+          const isSelected = i === selected;
+          return (
+            <text
+              key={row.key}
+              fg={isSelected ? color.primary : isActive ? color.success : undefined}
+              attributes={isSelected ? INVERSE : isActive ? BOLD : undefined}
+            >
+              {isActive ? '● ' : '  '}
+              {row.label}
+              {row.tagsText.length > 0 && <span attributes={DIM}>{row.tagsText}</span>}
+            </text>
+          );
+        })}
+      </scrollbox>
       <text> </text>
       <text attributes={DIM}>↑↓ nav · Enter open · d del · r rename · t tags · p prompt</text>
     </box>

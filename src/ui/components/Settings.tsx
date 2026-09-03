@@ -1,6 +1,6 @@
 import React from 'react';
 import type { SiloConfig } from '../../config/type.js';
-import { BOLD, DIM, INVERSE } from '../styles.js';
+import { BOLD, DIM, INVERSE, color } from '../styles.js';
 
 interface SettingsProps {
   config: SiloConfig;
@@ -11,18 +11,18 @@ interface SettingsProps {
 export function Settings({ config, currentModel, selected }: SettingsProps) {
   const names = Object.keys(config.models);
   return (
-    <box flexDirection="column" width={60} borderStyle="single" borderColor="gray" paddingX={1}>
+    <box flexDirection="column" width={60} borderStyle="single" borderColor={color.muted} paddingX={1}>
       <box justifyContent="space-between">
-        <text fg="cyan" attributes={BOLD}>
+        <text fg={color.primary} attributes={BOLD}>
           Model Settings
         </text>
         <text attributes={DIM}>Esc</text>
       </box>
-      <text fg="green" attributes={BOLD}>
+      <text fg={color.success} attributes={BOLD}>
         ● Current Model: {currentModel} ({config.models[currentModel]?.provider})
       </text>
       <text> </text>
-      <text fg="cyan" attributes={BOLD}>
+      <text fg={color.primary} attributes={BOLD}>
         Configured Models
       </text>
       {names.length === 0 && <text attributes={DIM}>No models configured.</text>}
@@ -37,7 +37,7 @@ export function Settings({ config, currentModel, selected }: SettingsProps) {
           .filter(Boolean)
           .join(' · ');
         return (
-          <text key={name} fg={name === currentModel ? 'green' : undefined} attributes={i === selected ? INVERSE : undefined}>
+          <text key={name} fg={name === currentModel ? color.success : undefined} attributes={i === selected ? INVERSE : undefined}>
             {name === currentModel ? '●' : ' '} {name}
             {detail ? <span attributes={DIM}>  — {detail}</span> : null}
           </text>

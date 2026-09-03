@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useKeyboard } from '@opentui/react';
 import type { ParsedKey } from '@opentui/core';
 import { Logo } from './Logo.js';
@@ -9,7 +9,7 @@ import type { ChatManager } from '../../chat/session.js';
 import type { ChatMessage, ChatSession } from '../../chat/types.js';
 import type { SiloConfig } from '../../config/type.js';
 import { toUserError } from '../../error/index.js';
-import { BOLD, DIM, BOLD_INVERSE, INVERSE } from '../styles.js';
+import { BOLD, DIM, BOLD_INVERSE, INVERSE, color } from '../styles.js';
 
 type View = 'chat' | 'sidebar' | 'settings';
 
@@ -20,6 +20,7 @@ interface AppProps {
 }
 
 export function inputCharOf(e: Pick<ParsedKey, 'name' | 'sequence'>): string {
+  if (e.name === 'space') return ' ';
   return e.name.length === 1 ? e.sequence : '';
 }
 
@@ -222,7 +223,7 @@ export function App({ manager, config, onRequestClose }: AppProps) {
 
     if (e.ctrl) {
       const ch = e.name?.toLowerCase();
-      if (ch === 's') {
+      if (ch === 's' || ch === 'd') {
         setView((v) => (v === 'sidebar' ? 'chat' : 'sidebar'));
         setChats(manager.listChats());
       } else if (ch === 'g') {
@@ -288,7 +289,7 @@ export function App({ manager, config, onRequestClose }: AppProps) {
       return;
     }
 
-    if (inputChar === 'e' || inputChar === 'E') {
+    if (input.length === 0 && (inputChar === 'e' || inputChar === 'E')) {
       if (messages.length > 0) {
         setMsgIdx(0);
         setMsgCursor(messages.length - 1);
@@ -298,6 +299,10 @@ export function App({ manager, config, onRequestClose }: AppProps) {
 
     if (isReturn) {
       const text = input.trim();
+      if (text === '/exit') {
+        onRequestClose?.();
+        return;
+      }
       if (text.length === 0) return;
       setInput('');
       void sendMessage(text);
@@ -435,7 +440,9 @@ export function App({ manager, config, onRequestClose }: AppProps) {
 
   return (
     <box flexDirection="column" flexGrow={1}>
-      <Header manager={manager} view={view} isStreaming={isStreaming} />
+      {messages.length > 0 || isStreaming || streaming.length > 0 || error ? (
+        <Header manager={manager} view={view} isStreaming={isStreaming} />
+      ) : null}
       <box flexDirection="row" flexGrow={1}>
         {view === 'sidebar' && (
           <box flexDirection="column">
@@ -443,12 +450,12 @@ export function App({ manager, config, onRequestClose }: AppProps) {
             {confirmDelete && (
               <box
                 borderStyle="single"
-                borderColor="yellow"
+                borderColor={color.warning}
                 paddingX={1}
                 width={34}
                 marginTop={1}
               >
-                <text fg="yellow" attributes={BOLD}>
+                <text fg={color.warning} attributes={BOLD}>
                   Delete selected conversation? (y/N)
                 </text>
               </box>
@@ -456,12 +463,12 @@ export function App({ manager, config, onRequestClose }: AppProps) {
             {renaming && (
               <box
                 borderStyle="single"
-                borderColor="cyan"
+                borderColor={color.primary}
                 paddingX={1}
                 width={34}
                 marginTop={1}
               >
-                <text fg="cyan">New title: </text>
+                <text fg={color.primary}>New title: </text>
                 {renameInput.length > 0 ? (
                   <>
                     <text>{renameInput}</text>
@@ -475,12 +482,12 @@ export function App({ manager, config, onRequestClose }: AppProps) {
             {tagging && (
               <box
                 borderStyle="single"
-                borderColor="magenta"
+                borderColor={color.prompt}
                 paddingX={1}
                 width={34}
                 marginTop={1}
               >
-                <text fg="magenta">Tags (comma sep): </text>
+                <text fg={color.prompt}>Tags (comma sep): </text>
                 {tagInput.length > 0 ? (
                   <>
                     <text>{tagInput}</text>
@@ -494,12 +501,12 @@ export function App({ manager, config, onRequestClose }: AppProps) {
             {promptEdit && (
               <box
                 borderStyle="single"
-                borderColor="green"
+                borderColor={color.success}
                 paddingX={1}
                 width={34}
                 marginTop={1}
               >
-                <text fg="green">System prompt: </text>
+                <text fg={color.success}>System prompt: </text>
                 {promptInput.length > 0 ? (
                   <>
                     <text>{promptInput}</text>
@@ -548,8 +555,8 @@ export function App({ manager, config, onRequestClose }: AppProps) {
           </box>
           {msgIdx !== null && msgEditing === null && (
             <box justifyContent="center" marginBottom={1}>
-              <box borderStyle="single" borderColor="yellow" paddingX={1}>
-                <text fg="yellow">
+              <box borderStyle="single" borderColor={color.warning} paddingX={1}>
+                <text fg={color.warning}>
                   Select: ↑/↓ · e edit · d delete · Enter/Esc done
                 </text>
               </box>
@@ -569,7 +576,23 @@ export function App({ manager, config, onRequestClose }: AppProps) {
   );
 }
 
+const TIPS = [
+  'Tip: Press Ctrl+T for a new chat',
+  'Tip: Press Ctrl+S to open the sidebar',
+  'Tip: Press Ctrl+G for model settings',
+  'Tip: Press Ctrl+F to search the current chat',
+  'Tip: Press Ctrl+C to stop streaming',
+  'Tip: Press Ctrl+X to quit Silo',
+  'Tip: Press ? to view all shortcuts',
+  'Tip: Press e to edit or delete a message',
+];
+
 function WelcomeScreen() {
+  const [tipIdx, setTipIdx] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTipIdx((i) => (i + 1) % TIPS.length), 60_000);
+    return () => clearInterval(id);
+  }, []);
   return (
     <box
       flexDirection="column"
@@ -579,31 +602,7 @@ function WelcomeScreen() {
     >
       <Logo />
       <text> </text>
-      <text fg="cyan" attributes={BOLD}>
-        Welcome to Silo
-      </text>
-      <text attributes={DIM}>
-        A CLI chat app. Type a message to get started.
-      </text>
-      <text> </text>
-      <box flexDirection="column" alignItems="flex-start">
-        <text>
-          <span fg="yellow" attributes={BOLD}>{'  Ctrl+T '.padEnd(14)}</span>
-          <span attributes={DIM}>New chat</span>
-        </text>
-        <text>
-          <span fg="yellow" attributes={BOLD}>{'  Ctrl+S '.padEnd(14)}</span>
-          <span attributes={DIM}>Sidebar</span>
-        </text>
-        <text>
-          <span fg="yellow" attributes={BOLD}>{'  Ctrl+G '.padEnd(14)}</span>
-          <span attributes={DIM}>Settings</span>
-        </text>
-        <text>
-          <span fg="yellow" attributes={BOLD}>{'  ?      '.padEnd(14)}</span>
-          <span attributes={DIM}>All shortcuts</span>
-        </text>
-      </box>
+      <text attributes={DIM}>{TIPS[tipIdx]}</text>
     </box>
   );
 }
@@ -618,29 +617,29 @@ function Header({
   isStreaming: boolean;
 }) {
   return (
-    <box borderStyle="single" borderColor="gray" paddingX={1}>
+    <box backgroundColor={color.inputBg} height={3} flexDirection="row" alignItems="center" paddingX={1}>
       <box flexDirection="row" justifyContent="space-between" alignItems="center" width="100%">
         <box flexDirection="row" alignItems="center">
-          <text fg="cyan" attributes={BOLD}>
+          <text fg={color.primary} attributes={BOLD}>
             SILO
           </text>
-          <text fg="gray"> · </text>
-          <text>{manager.label}</text>
-          {isStreaming && <text fg="green"> · typing…</text>}
+          <text fg={color.muted}> · </text>
+          <text fg={color.fg}>{manager.label}</text>
+          {isStreaming && <text fg={color.success}> · typing…</text>}
         </box>
         <box flexDirection="row" alignItems="center">
-          <text fg={view === 'sidebar' ? 'cyan' : 'gray'} attributes={view === 'sidebar' ? BOLD : undefined}>
+          <text fg={view === 'sidebar' ? color.primary : color.muted} attributes={view === 'sidebar' ? BOLD : undefined}>
             [≡] s
           </text>
-          <text fg="gray"> </text>
+          <text fg={color.muted}> </text>
           <text
-            fg={view === 'settings' ? 'cyan' : 'gray'}
+            fg={view === 'settings' ? color.primary : color.muted}
             attributes={view === 'settings' ? BOLD : undefined}
           >
             [⚙] g
           </text>
-          <text fg="gray"> </text>
-          <text fg={view === 'chat' ? 'cyan' : 'gray'} attributes={view === 'chat' ? BOLD : undefined}>
+          <text fg={color.muted}> </text>
+          <text fg={view === 'chat' ? color.primary : color.muted} attributes={view === 'chat' ? BOLD : undefined}>
             [+] t
           </text>
         </box>
@@ -676,7 +675,7 @@ function Layout({
       ))}
       {isStreaming && (
         <box>
-          <text fg="green" attributes={BOLD}>
+          <text fg={color.success} attributes={BOLD}>
             Assistant:{' '}
           </text>
           {streaming.length > 0 ? (
@@ -686,7 +685,7 @@ function Layout({
           )}
         </box>
       )}
-      {error && <text fg="red">{error}</text>}
+      {error && <text fg={color.error}>{error}</text>}
     </box>
   );
 }
@@ -712,13 +711,13 @@ function MessageView({
   selected?: boolean;
 }) {
   const name = message.role === 'user' ? 'You' : 'Assistant';
-  const color = message.role === 'user' ? 'cyan' : 'green';
+  const roleColor = message.role === 'user' ? color.primary : color.assistant;
   const content = normalizeMessage(message.content);
   const marker = selectable ? (selected ? '» ' : '  ') : '';
   return (
     <box>
       <text
-        fg={selected ? 'yellow' : color}
+        fg={selected ? color.warning : roleColor}
         attributes={selected ? BOLD_INVERSE : BOLD}
       >
         {marker}{name}:{' '}
@@ -734,8 +733,8 @@ function MessageView({
 
 function SearchBar({ query, count }: { query: string; count: number }) {
   return (
-    <box borderStyle="single" borderColor="magenta" width="100%" paddingX={1} marginBottom={1}>
-      <text fg="magenta" attributes={BOLD}>
+    <box borderStyle="single" borderColor={color.prompt} width="100%" paddingX={1} marginBottom={1}>
+      <text fg={color.prompt} attributes={BOLD}>
         Search:{' '}
       </text>
       {query.length > 0 ? (
@@ -746,7 +745,7 @@ function SearchBar({ query, count }: { query: string; count: number }) {
       ) : (
         <text attributes={DIM}>Type to search current chat…</text>
       )}
-      <text fg="gray"> ({count} matches) · Enter/Esc done</text>
+      <text fg={color.muted}> ({count} matches) · Enter/Esc done</text>
     </box>
   );
 }
@@ -772,11 +771,11 @@ function SearchResults({
   return (
     <box flexDirection="column" width="100%" paddingX={1}>
       {normalized.map((row, i) => {
-        const color = row.name === 'You' ? 'cyan' : 'green';
+        const roleColor = row.name === 'You' ? color.primary : color.assistant;
         return (
           <box key={results[i].id}>
             <text
-              fg={i === selected ? 'yellow' : color}
+              fg={i === selected ? color.warning : roleColor}
               attributes={i === selected ? BOLD_INVERSE : BOLD}
             >
               {i === selected ? '» ' : '  '}{row.name}:{' '}
@@ -791,8 +790,8 @@ function SearchResults({
 
 function EditBar({ value }: { value: string }) {
   return (
-    <box borderStyle="single" borderColor="yellow" width="100%" paddingX={1} marginBottom={1}>
-      <text fg="yellow" attributes={BOLD}>
+    <box borderStyle="single" borderColor={color.warning} width="100%" paddingX={1} marginBottom={1}>
+      <text fg={color.warning} attributes={BOLD}>
         Edit:{' '}
       </text>
       {value.length > 0 ? (
@@ -803,29 +802,31 @@ function EditBar({ value }: { value: string }) {
       ) : (
         <text attributes={INVERSE}> </text>
       )}
-      <text fg="gray"> · Enter save · Esc cancel</text>
+      <text fg={color.muted}> · Enter save · Esc cancel</text>
     </box>
   );
 }
 
-function InputBox({ value, isStreaming }: { value: string; isStreaming: boolean }) {
+export function InputBox({ value, isStreaming }: { value: string; isStreaming: boolean }) {
   return (
     <box
-      borderStyle="single"
-      borderColor={isStreaming ? 'yellow' : 'gray'}
+      height={3}
       width="50%"
-      paddingX={1}
+      backgroundColor={isStreaming ? color.warning : color.inputBg}
+      flexDirection="row"
+      alignItems="center"
+      paddingLeft={1}
+      shouldFill
     >
-      <text fg={isStreaming ? 'yellow' : 'cyan'}>
-        {isStreaming ? '* ' : '> '}
-      </text>
       {value.length > 0 ? (
-        <>
-          <text>{value}</text>
-          <text attributes={INVERSE}> </text>
-        </>
+        <text fg={color.fg} attributes={BOLD}>
+          {value}
+          <span attributes={INVERSE}> </span>
+        </text>
       ) : (
-        <text attributes={DIM}>Ask anything...</text>
+        <text fg={color.fg} attributes={DIM}>
+          Ask anything...
+        </text>
       )}
     </box>
   );

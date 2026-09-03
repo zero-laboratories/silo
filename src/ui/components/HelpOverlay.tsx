@@ -1,5 +1,5 @@
 import React from 'react';
-import { BOLD, DIM } from '../styles.js';
+import { BOLD, DIM, color } from '../styles.js';
 
 const shortcuts: Array<[string, string, boolean]> = [
   ['Chat', '', true],
@@ -36,13 +36,13 @@ export function HelpOverlay() {
     >
       <box
         borderStyle="double"
-        borderColor="cyan"
+        borderColor={color.primary}
         flexDirection="column"
         paddingX={1}
         width={50}
       >
         <box justifyContent="center">
-          <text fg="cyan" attributes={BOLD}>
+          <text fg={color.primary} attributes={BOLD}>
             Keyboard Shortcuts
           </text>
         </box>
@@ -50,14 +50,14 @@ export function HelpOverlay() {
         {shortcuts.map(([key, desc, isHeader], i) => {
           if (isHeader) {
             return (
-              <text key={i} fg="cyan" attributes={BOLD}>
+              <text key={i} fg={color.primary} attributes={BOLD}>
                 {key}
               </text>
             );
           }
           return (
             <text key={i}>
-              <span fg="yellow" attributes={BOLD}>
+              <span fg={color.warning} attributes={BOLD}>
                 {key.padEnd(10)}
               </span>
               <span>{desc}</span>
