@@ -81,7 +81,7 @@ export function App({ manager, config, onRequestClose }: AppProps) {
       return;
     }
 
-    if (inputChar === '?') {
+    if (input.length === 0 && inputChar === '?') {
       setHelpVisible(true);
       return;
     }
@@ -443,6 +443,9 @@ export function App({ manager, config, onRequestClose }: AppProps) {
       {messages.length > 0 || isStreaming || streaming.length > 0 || error ? (
         <Header manager={manager} view={view} isStreaming={isStreaming} />
       ) : null}
+      {(messages.length > 0 || isStreaming || streaming.length > 0 || error) ? (
+        <box height={1} />
+      ) : null}
       <box flexDirection="row" flexGrow={1}>
         {view === 'sidebar' && (
           <box flexDirection="column">
@@ -534,7 +537,8 @@ export function App({ manager, config, onRequestClose }: AppProps) {
             flexDirection="column"
             flexGrow={1}
             justifyContent="flex-end"
-            alignItems="center"
+            alignItems="flex-start"
+            paddingLeft={2}
           >
             {search.active ? (
               <SearchResults results={search.results} selected={search.idx} />
