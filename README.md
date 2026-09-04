@@ -101,12 +101,11 @@ Then run `silo` again. You should see a prompt ready for input.
 
 ## Supported providers
 
-| Provider | Models | Notes |
-|----------|--------|-------|
-| Anthropic | Claude 5 Sonnet | Primary focus, full support |
-| OpenAI | GPT-4, GPT-3.5 | Standard support |
-| Google | Gemini 3.5 Flash | Basic support |
-| OpenRouter | Anything on the platform | Meta-provider, route to whatever |
+- OpenCode Go/Zen
+- OpenAI
+- OpenRouter
+- Anthropic
+- Google
 
 Switch models from within the app via Settings.
 
