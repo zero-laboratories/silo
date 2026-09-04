@@ -449,77 +449,22 @@ export function App({ manager, config, onRequestClose }: AppProps) {
       <box flexDirection="row" flexGrow={1}>
         {view === 'sidebar' && (
           <box flexDirection="column">
-            <Sidebar chats={chats} activeId={session.id} selected={chatIdx} />
-            {confirmDelete && (
-              <box
-                borderStyle="single"
-                borderColor={color.warning}
-                paddingX={1}
-                width={34}
-                marginTop={1}
-              >
-                <text fg={color.warning} attributes={BOLD}>
-                  Delete selected conversation? (y/N)
-                </text>
-              </box>
-            )}
-            {renaming && (
-              <box
-                borderStyle="single"
-                borderColor={color.primary}
-                paddingX={1}
-                width={34}
-                marginTop={1}
-              >
-                <text fg={color.primary}>New title: </text>
-                {renameInput.length > 0 ? (
-                  <>
-                    <text>{renameInput}</text>
-                    <text attributes={INVERSE}> </text>
-                  </>
-                ) : (
-                  <text attributes={INVERSE}> </text>
-                )}
-              </box>
-            )}
-            {tagging && (
-              <box
-                borderStyle="single"
-                borderColor={color.prompt}
-                paddingX={1}
-                width={34}
-                marginTop={1}
-              >
-                <text fg={color.prompt}>Tags (comma sep): </text>
-                {tagInput.length > 0 ? (
-                  <>
-                    <text>{tagInput}</text>
-                    <text attributes={INVERSE}> </text>
-                  </>
-                ) : (
-                  <text attributes={INVERSE}> </text>
-                )}
-              </box>
-            )}
-            {promptEdit && (
-              <box
-                borderStyle="single"
-                borderColor={color.success}
-                paddingX={1}
-                width={34}
-                marginTop={1}
-              >
-                <text fg={color.success}>System prompt: </text>
-                {promptInput.length > 0 ? (
-                  <>
-                    <text>{promptInput}</text>
-                    <text attributes={INVERSE}> </text>
-                  </>
-                ) : (
-                  <text attributes={INVERSE}> </text>
-                )}
-              </box>
-            )}
+            <Sidebar
+              chats={chats}
+              activeId={session.id}
+              selected={chatIdx}
+              prompt={
+                confirmDelete
+                  ? { kind: 'confirmDelete', label: 'Delete conversation? (y/N)', value: '' }
+                  : renaming
+                    ? { kind: 'rename', label: 'New title: ', value: renameInput }
+                    : tagging
+                      ? { kind: 'tag', label: 'Tags (comma sep): ', value: tagInput }
+                      : promptEdit
+                        ? { kind: 'prompt', label: 'System prompt: ', value: promptInput }
+                        : undefined
+              }
+            />
           </box>
         )}
         {view === 'settings' && (
@@ -546,14 +491,16 @@ export function App({ manager, config, onRequestClose }: AppProps) {
               <WelcomeScreen />
             ) : (
               <box flexDirection="column" flexGrow={1}>
-                <Layout
-                  messages={messages}
-                  streaming={streaming}
-                  isStreaming={isStreaming}
-                  error={error}
-                  selectable={msgIdx !== null}
-                  selected={msgCursor}
-                />
+                <scrollbox flexGrow={1} scrollY>
+                  <Layout
+                    messages={messages}
+                    streaming={streaming}
+                    isStreaming={isStreaming}
+                    error={error}
+                    selectable={msgIdx !== null}
+                    selected={msgCursor}
+                  />
+                </scrollbox>
               </box>
             )}
           </box>
@@ -602,6 +549,7 @@ function WelcomeScreen() {
       flexDirection="column"
       alignItems="center"
       justifyContent="center"
+      width="100%"
       flexGrow={1}
     >
       <Logo />

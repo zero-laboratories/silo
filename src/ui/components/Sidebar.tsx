@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import type { ChatSession } from '../../chat/types.js';
-import { BOLD, DIM, INVERSE, color } from '../styles.js';
+import { BOLD, DIM, color } from '../styles.js';
 
 export function chatLabel(chat: ChatSession): string {
   if (chat.title) return chat.title;
@@ -12,13 +12,54 @@ export function chatLabel(chat: ChatSession): string {
   return 'New chat';
 }
 
+export interface SidebarPrompt {
+  kind: 'confirmDelete' | 'rename' | 'tag' | 'prompt';
+  label: string;
+  value: string;
+}
+
 interface SidebarProps {
   chats: ChatSession[];
   activeId: string;
   selected: number;
+  prompt?: SidebarPrompt;
 }
 
-export function Sidebar({ chats, activeId, selected }: SidebarProps) {
+const promptBorderColor = {
+  confirmDelete: color.warning,
+  rename: color.primary,
+  tag: color.prompt,
+  prompt: color.success,
+} as const;
+
+const promptFgColor = {
+  confirmDelete: color.warning,
+  rename: color.primary,
+  tag: color.prompt,
+  prompt: color.success,
+} as const;
+
+const PROMPT_TEXT_WIDTH = 28;
+
+function wrapText(text: string, maxWidth: number): string[] {
+  if (text.length <= maxWidth) return [text];
+  const lines: string[] = [];
+  let remaining = text;
+  while (remaining.length > 0) {
+    if (remaining.length <= maxWidth) {
+      lines.push(remaining);
+      break;
+    }
+    let breakAt = remaining.lastIndexOf(' ', maxWidth);
+    if (breakAt <= 0) breakAt = maxWidth;
+    else breakAt += 1;
+    lines.push(remaining.slice(0, breakAt).trimEnd());
+    remaining = remaining.slice(breakAt);
+  }
+  return lines;
+}
+
+export function Sidebar({ chats, activeId, selected, prompt }: SidebarProps) {
   const rows = useMemo(
     () =>
       chats.map((chat) => {
@@ -48,6 +89,40 @@ export function Sidebar({ chats, activeId, selected }: SidebarProps) {
         <text attributes={DIM}>Esc</text>
       </box>
       <text> </text>
+      <text attributes={DIM}>↑↓ nav · Enter open · d del · r rename · t tags · p prompt</text>
+      {prompt && (
+        <box flexDirection="column" borderStyle="single" borderColor={promptBorderColor[prompt.kind]} paddingX={1} marginTop={1} width="100%">
+          <box flexShrink={0} width="100%">
+            <text fg={promptFgColor[prompt.kind]} attributes={prompt.kind === 'confirmDelete' ? BOLD : undefined}>
+              {prompt.label}
+            </text>
+          </box>
+          {prompt.kind !== 'confirmDelete' && (
+            prompt.value.length > 0 ? (
+              (() => {
+                const lines = wrapText(prompt.value, PROMPT_TEXT_WIDTH);
+                return lines.map((line, i) => {
+                  const isLast = i === lines.length - 1;
+                  const maxLine = isLast ? PROMPT_TEXT_WIDTH - 1 : PROMPT_TEXT_WIDTH;
+                  const display = line.length > maxLine ? line.slice(0, maxLine) : line;
+                  return (
+                    <box key={i} flexShrink={0} width="100%">
+                      <text>
+                        {display}
+                        {isLast && <span bg={color.selectedBg}> </span>}
+                      </text>
+                    </box>
+                  );
+                });
+              })()
+            ) : (
+              <box flexShrink={0} width="100%">
+                <text bg={color.selectedBg}> </text>
+              </box>
+            )
+          )}
+        </box>
+      )}
       <scrollbox flexGrow={1} scrollY>
         {chats.length === 0 && <text attributes={DIM}>No conversations yet.</text>}
         {rows.map((row, i) => {
@@ -56,8 +131,9 @@ export function Sidebar({ chats, activeId, selected }: SidebarProps) {
           return (
             <text
               key={row.key}
-              fg={isSelected ? color.primary : isActive ? color.success : undefined}
-              attributes={isSelected ? INVERSE : isActive ? BOLD : undefined}
+              fg={isSelected ? color.fg : isActive ? color.success : undefined}
+              bg={isSelected ? color.selectedBg : undefined}
+              attributes={isActive && !isSelected ? BOLD : undefined}
             >
               {isActive ? '● ' : '  '}
               {row.label}
@@ -66,8 +142,6 @@ export function Sidebar({ chats, activeId, selected }: SidebarProps) {
           );
         })}
       </scrollbox>
-      <text> </text>
-      <text attributes={DIM}>↑↓ nav · Enter open · d del · r rename · t tags · p prompt</text>
     </box>
   );
 }
