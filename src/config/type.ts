@@ -8,6 +8,13 @@ export interface ModelConfig {
   timeout?: number;
 }
 
+export interface McpServerConfig {
+  command: string;
+  args?: string[];
+  env?: Record<string, string>;
+  enabled?: boolean;
+}
+
 export interface SiloConfig {
   general: {
     default_model: string;
@@ -15,4 +22,7 @@ export interface SiloConfig {
     context_strategy?: string;
   };
   models: Record<string, ModelConfig>;
+  mcp?: {
+    servers?: Record<string, McpServerConfig>;
+  };
 }

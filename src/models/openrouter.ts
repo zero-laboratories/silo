@@ -1,16 +1,8 @@
-import type { LLMProvider, StreamChunk } from './types.js';
+import type { LLMProvider, StreamChunk, ToolDefinition } from './types.js';
 import { apiKeyFor } from './types.js';
-import { stream } from './stream.js';
+import { buildToolsPayload, serializeOpenAIMessages, streamOpenAICompat } from './openai_compat.js';
 import type { ChatMessage } from '../chat/types.js';
 import type { ModelConfig } from '../config/type.js';
-
-interface OpenRouterEvent {
-  choices?: Array<{
-    delta?: { content?: string | null };
-    finish_reason?: string | null;
-  }>;
-  error?: { message?: string };
-}
 
 export class OpenRouterProvider implements LLMProvider {
   getName(): string {
@@ -25,12 +17,10 @@ export class OpenRouterProvider implements LLMProvider {
     messages: ChatMessage[],
     config: ModelConfig,
     signal?: AbortSignal,
+    tools?: ToolDefinition[],
   ): AsyncGenerator<StreamChunk> {
     const apiKey = apiKeyFor(config);
-    const chatMessages = messages.map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
+    const toolsPayload = buildToolsPayload(tools ?? []);
 
     const response = await fetch(
       config.base_url ?? 'https://openrouter.ai/api/v1/chat/completions',
@@ -46,21 +36,16 @@ export class OpenRouterProvider implements LLMProvider {
           model: config.model,
           max_tokens: config.max_tokens ?? 2000,
           temperature: config.temperature ?? 0.7,
-          messages: chatMessages,
+          messages: serializeOpenAIMessages(messages),
           stream: true,
+          ...(toolsPayload !== undefined ? { tools: toolsPayload } : {}),
         }),
         signal,
       },
     );
 
-    yield* stream<OpenRouterEvent>(response, 'OpenRouter', {
-      onEvent: (parsed) => {
-        if (parsed.error?.message) {
-          throw new Error(parsed.error.message);
-        }
-        const delta = parsed.choices?.[0]?.delta?.content;
-        return delta ?? undefined;
-      },
+    yield* streamOpenAICompat(response, 'OpenRouter', (msg) => {
+      throw new Error(msg);
     });
   }
 }

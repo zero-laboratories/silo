@@ -7,6 +7,7 @@ import { Store } from './storage/database.js';
 import { loadConfig, dbPath, configPath } from './config/index.js';
 import { providerFor } from './models/index.js';
 import { ChatManager } from './chat/session.js';
+import { McpRegistry } from './mcp/registry.js';
 import { App } from './ui/components/App.js';
 import { toUserError } from './error/index.js';
 
@@ -58,7 +59,8 @@ function runChat(modelName?: string, resume?: boolean) {
 
       const provider = providerFor(model.provider);
       const store = new Store();
-      const manager = new ChatManager(store, provider, model, { resume });
+      const mcp = new McpRegistry(config.mcp?.servers ?? {});
+      const manager = new ChatManager(store, provider, model, { resume }, {}, mcp);
 
       const renderer = await createCliRenderer({
         screenMode: 'alternate-screen',

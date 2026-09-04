@@ -411,6 +411,11 @@ model = "poolside-ai/laguna-2.1-xs"
 temperature = 0.7
 max_tokens = 2000
 
+# Model Context Protocol servers (tools the model can call during chat)
+[mcp.servers.filesystem]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+
 [appearance]
 primary_color = "#00bfff"
 accent_color = "#ff00ff"
@@ -446,6 +451,46 @@ export class ConfigValidator {
   }
 }
 ```
+
+---
+
+### 4.6 MCP Integration (Model Context Protocol)
+
+**Responsibility:** Expose tools from external MCP servers to the LLM.
+
+**Config (`config.toml`):** each `[mcp.servers.<name>]` entry spawns a stdio
+subprocess that speaks JSON-RPC over stdin/stdout.
+
+```toml
+[mcp.servers.filesystem]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+env.MY_VAR = "value"   # optional extra env for the subprocess
+# enabled = false      # optional: skip the server
+```
+
+**Components:**
+- `src/mcp/client.ts` — `McpClient` spawns one server, performs the MCP
+  `initialize` handshake, then serves `tools/list` and `tools/call` via
+  newline-delimited JSON-RPC. Requests time out after 30s.
+- `src/mcp/registry.ts` — `McpRegistry` multiplexes all configured servers.
+  Tools are **namespaced** as `<server>__<tool>` to avoid collisions. Disabled
+  (`enabled = false`) and missing servers are skipped; unknown tools are
+  rejected.
+- `src/models/openai_compat.ts` — OpenAI-compatible streaming parser that
+  accumulates `tool_calls` deltas and emits `{ type: 'tool' }` chunks.
+- `src/chat/session.ts` — `ChatManager` runs the tool-call loop: full-context
+  replay for every turn, tool results fed back as `role: 'tool'` messages,
+  capped at 8 tool turns. Only the final assistant text is persisted.
+
+**Provider support:** tool calling is implemented for the OpenAI-compatible
+API (OpenAI, OpenRouter). Anthropic and Gemini providers ignore tools for now.
+
+**Guarantees:**
+- No tools configured → zero overhead; the loop is skipped entirely.
+- Tool execution failures are fed back to the model as `Error: …` text so the
+  conversation survives.
+- Tool calls and results are transient — never written to the database.
 
 ---
 
