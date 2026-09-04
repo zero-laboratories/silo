@@ -15,6 +15,7 @@ export const color = {
   error: '#ff3a3a',
   muted: '#808080',
   inputBg: '#1e1e1e',
+  selectedBg: '#444444',
   fg: '#e8e8e8',
   bg: '#0a0a0a',
 } as const;

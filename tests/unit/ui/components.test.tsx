@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import React from 'react';
 import { testRender } from '@opentui/react/test-utils';
-import { chatLabel } from '../../../src/ui/components/Sidebar.js';
+import { chatLabel, Sidebar } from '../../../src/ui/components/Sidebar.js';
 import { inputCharOf } from '../../../src/ui/components/App.js';
 import { Logo } from '../../../src/ui/components/Logo.js';
 import { HelpOverlay } from '../../../src/ui/components/HelpOverlay.js';
@@ -17,17 +17,17 @@ async function renderContaining(node: React.ReactNode, expected: string): Promis
   }
 }
 
-describe('chatLabel', () => {
-  const base: ChatSession = {
-    id: 'c1',
-    messages: [],
-    model: 'claude',
-    provider: 'openai',
-    systemPrompt: '',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
+const base: ChatSession = {
+  id: 'c1',
+  messages: [],
+  model: 'claude',
+  provider: 'openai',
+  systemPrompt: '',
+  createdAt: new Date(),
+  updatedAt: new Date(),
+};
 
+describe('chatLabel', () => {
   it('uses the title when present', () => {
     expect(chatLabel({ ...base, title: 'My chat' })).toBe('My chat');
   });
@@ -90,5 +90,27 @@ describe('component rendering (OpenTUI)', () => {
     expect(frame).toContain('Ctrl+X');
     expect(frame).toContain('Quit Silo');
     expect(frame).toContain('Rename selected chat');
+  });
+
+  it('renders the delete confirmation prompt inside the sidebar', async () => {
+    const chats: ChatSession[] = [
+      { ...base, id: 'c1', title: 'First chat' },
+      { ...base, id: 'c2', title: 'Second chat' },
+    ];
+    const frame = await renderContaining(
+      <Sidebar chats={chats} activeId="c1" selected={1} prompt={{ kind: 'confirmDelete', label: 'Delete conversation? (y/N)', value: '' }} />,
+      'First chat',
+    );
+    expect(frame).toContain('Second chat');
+    expect(frame).toContain('Delete');
+  });
+
+  it('renders a rename input with cursor inside the sidebar', async () => {
+    const chats: ChatSession[] = [{ ...base, id: 'c1', title: 'First chat' }];
+    const frame = await renderContaining(
+      <Sidebar chats={chats} activeId="c1" selected={0} prompt={{ kind: 'rename', label: 'New title: ', value: 'Re' }} />,
+      'First chat',
+    );
+    expect(frame).toMatch(/title/);
   });
 });

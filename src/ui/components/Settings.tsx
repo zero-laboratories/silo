@@ -1,6 +1,6 @@
 import React from 'react';
 import type { SiloConfig } from '../../config/type.js';
-import { BOLD, DIM, INVERSE, color } from '../styles.js';
+import { BOLD, DIM, color } from '../styles.js';
 
 interface SettingsProps {
   config: SiloConfig;
@@ -37,7 +37,11 @@ export function Settings({ config, currentModel, selected }: SettingsProps) {
           .filter(Boolean)
           .join(' · ');
         return (
-          <text key={name} fg={name === currentModel ? color.success : undefined} attributes={i === selected ? INVERSE : undefined}>
+          <text
+            key={name}
+            fg={i === selected ? color.fg : name === currentModel ? color.success : undefined}
+            bg={i === selected ? color.selectedBg : undefined}
+          >
             {name === currentModel ? '●' : ' '} {name}
             {detail ? <span attributes={DIM}>  — {detail}</span> : null}
           </text>
