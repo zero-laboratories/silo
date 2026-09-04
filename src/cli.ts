@@ -65,6 +65,7 @@ function runChat(modelName?: string, resume?: boolean) {
         exitOnCtrlC: false,
         exitSignals: ['SIGTERM'],
         clearOnShutdown: true,
+        useMouse: true,
       });
 
       const root = createRoot(renderer);

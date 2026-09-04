@@ -16,6 +16,8 @@ export const color = {
   muted: '#808080',
   inputBg: '#1e1e1e',
   selectedBg: '#444444',
+  tabBarBg: '#050505',
+  tabActiveBg: '#3f3f3f',
   fg: '#e8e8e8',
   bg: '#0a0a0a',
 } as const;

@@ -3,6 +3,8 @@ import React from 'react';
 import { testRender } from '@opentui/react/test-utils';
 import { chatLabel, Sidebar } from '../../../src/ui/components/Sidebar.js';
 import { inputCharOf } from '../../../src/ui/components/App.js';
+import { TabSwitcher } from '../../../src/ui/components/TabSwitcher.js';
+import { WorkLogo } from '../../../src/ui/components/WorkLogo.js';
 import { Logo } from '../../../src/ui/components/Logo.js';
 import { HelpOverlay } from '../../../src/ui/components/HelpOverlay.js';
 import type { ChatSession } from '../../../src/chat/types.js';
@@ -112,5 +114,63 @@ describe('component rendering (OpenTUI)', () => {
       'First chat',
     );
     expect(frame).toMatch(/title/);
+  });
+
+  it('renders the tab switcher with Chat and Work tabs', async () => {
+    const frame = await renderContaining(<TabSwitcher mode="chat" />, 'Chat');
+    expect(frame).toContain('Work');
+  });
+
+  it('highlights the active tab', async () => {
+    const chatFrame = await renderContaining(<TabSwitcher mode="chat" />, 'Chat');
+    const workFrame = await renderContaining(<TabSwitcher mode="work" />, 'Work');
+    expect(chatFrame).toContain('Chat');
+    expect(workFrame).toContain('Work');
+  });
+
+  it('renders the Work logo as block glyphs', async () => {
+    await renderContaining(<WorkLogo />, '█');
+  });
+});
+
+describe('TabSwitcher mouse interaction', () => {
+  it('fires onSelect("work") when the Work tab is clicked', async () => {
+    const { vi } = await import('vitest');
+    const onSelect = vi.fn();
+    const setup = await testRender(
+      <TabSwitcher mode="chat" onSelect={onSelect} />,
+      { width: 80, height: 4, useMouse: true },
+    );
+    try {
+      await setup.waitForFrame((frame) => frame.includes('Work'));
+      const rows = setup.captureCharFrame().split('\n');
+      const y = rows.findIndex((row) => row.includes('Work'));
+      const x = rows[y].indexOf('Work');
+      await setup.mockMouse.click(x + 1, y);
+      await setup.waitForFrame(() => true);
+      expect(onSelect).toHaveBeenCalledWith('work');
+    } finally {
+      await setup.renderer.destroy();
+    }
+  });
+
+  it('fires onSelect("chat") when the Chat tab is clicked', async () => {
+    const { vi } = await import('vitest');
+    const onSelect = vi.fn();
+    const setup = await testRender(
+      <TabSwitcher mode="work" onSelect={onSelect} />,
+      { width: 80, height: 4, useMouse: true },
+    );
+    try {
+      await setup.waitForFrame((frame) => frame.includes('Chat'));
+      const rows = setup.captureCharFrame().split('\n');
+      const y = rows.findIndex((row) => row.includes('Chat'));
+      const x = rows[y].indexOf('Chat');
+      await setup.mockMouse.click(x + 1, y);
+      await setup.waitForFrame(() => true);
+      expect(onSelect).toHaveBeenCalledWith('chat');
+    } finally {
+      await setup.renderer.destroy();
+    }
   });
 });

@@ -5,6 +5,8 @@ import { Logo } from './Logo.js';
 import { Sidebar } from './Sidebar.js';
 import { Settings } from './Settings.js';
 import { HelpOverlay } from './HelpOverlay.js';
+import { TabSwitcher, type Mode } from './TabSwitcher.js';
+import { WorkLogo } from './WorkLogo.js';
 import type { ChatManager } from '../../chat/session.js';
 import type { ChatMessage, ChatSession } from '../../chat/types.js';
 import type { SiloConfig } from '../../config/type.js';
@@ -33,6 +35,7 @@ export function App({ manager, config, onRequestClose }: AppProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(session.messages);
   const [chats, setChats] = useState<ChatSession[]>(() => manager.listChats());
   const [view, setView] = useState<View>('chat');
+  const [mode, setMode] = useState<Mode>('chat');
   const [chatIdx, setChatIdx] = useState(0);
   const [modelIdx, setModelIdx] = useState(0);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -83,6 +86,11 @@ export function App({ manager, config, onRequestClose }: AppProps) {
 
     if (input.length === 0 && inputChar === '?') {
       setHelpVisible(true);
+      return;
+    }
+
+    if (e.name === 'tab') {
+      setMode((m) => (m === 'chat' ? 'work' : 'chat'));
       return;
     }
 
@@ -440,6 +448,9 @@ export function App({ manager, config, onRequestClose }: AppProps) {
 
   return (
     <box flexDirection="column" flexGrow={1}>
+      {!(messages.length > 0 || isStreaming || streaming.length > 0 || error) && (
+        <TabSwitcher mode={mode} onSelect={setMode} />
+      )}
       {messages.length > 0 || isStreaming || streaming.length > 0 || error ? (
         <Header manager={manager} view={view} isStreaming={isStreaming} />
       ) : null}
@@ -488,7 +499,7 @@ export function App({ manager, config, onRequestClose }: AppProps) {
             {search.active ? (
               <SearchResults results={search.results} selected={search.idx} />
             ) : messages.length === 0 && !isStreaming && !streaming && !error ? (
-              <WelcomeScreen />
+              <WelcomeScreen mode={mode} />
             ) : (
               <box flexDirection="column" flexGrow={1}>
                 <scrollbox flexGrow={1} scrollY>
@@ -538,7 +549,7 @@ const TIPS = [
   'Tip: Press e to edit or delete a message',
 ];
 
-function WelcomeScreen() {
+function WelcomeScreen({ mode }: { mode: Mode }) {
   const [tipIdx, setTipIdx] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setTipIdx((i) => (i + 1) % TIPS.length), 60_000);
@@ -552,7 +563,7 @@ function WelcomeScreen() {
       width="100%"
       flexGrow={1}
     >
-      <Logo />
+      {mode === 'work' ? <WorkLogo /> : <Logo />}
       <text> </text>
       <text attributes={DIM}>{TIPS[tipIdx]}</text>
     </box>
