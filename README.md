@@ -29,7 +29,7 @@ It's built with OpenTUI (native terminal bindings with React) and TypeScript. Th
 
 - **Minimal.** Only what's necessary. No decorative UI elements, no loading spinners, no bloat.
 - **Beautiful.** Every interaction should feel intentional. Smooth streaming, clear feedback.
-- **Model-agnostic.** The provider is not the product. You own the config, you pick the model.
+- **Model-agnostic.** The provider is not the product. You own the config, you pick the model.  
 
 ## Install
 
