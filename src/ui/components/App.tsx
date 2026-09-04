@@ -29,6 +29,7 @@ export function inputCharOf(e: Pick<ParsedKey, 'name' | 'sequence'>): string {
 export function App({ manager, config, onRequestClose }: AppProps) {
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState('');
+  const [toolStatus, setToolStatus] = useState<string[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const session = manager.session;
@@ -332,6 +333,7 @@ export function App({ manager, config, onRequestClose }: AppProps) {
     abortRef.current = controller;
     setIsStreaming(true);
     setStreaming('');
+    setToolStatus([]);
     setError(null);
 
     setMessages((prev) => [
@@ -348,6 +350,9 @@ export function App({ manager, config, onRequestClose }: AppProps) {
       for await (const chunk of manager.send(text, controller.signal)) {
         if (chunk.type === 'content' && chunk.content) {
           setStreaming((prev) => prev + (chunk.content ?? ''));
+        } else if (chunk.type === 'status' && chunk.status) {
+          const line = chunk.status;
+          setToolStatus((prev) => [...prev, line]);
         }
       }
     } catch (err) {
@@ -356,6 +361,7 @@ export function App({ manager, config, onRequestClose }: AppProps) {
     } finally {
       setIsStreaming(false);
       setStreaming('');
+      setToolStatus([]);
       setMessages(manager.session.messages);
       setChats(manager.listChats());
       const chat = manager.session;
@@ -377,6 +383,7 @@ export function App({ manager, config, onRequestClose }: AppProps) {
     setInput('');
     setError(null);
     setStreaming('');
+    setToolStatus([]);
     setChats(manager.listChats());
     setView('chat');
   }
@@ -506,6 +513,7 @@ export function App({ manager, config, onRequestClose }: AppProps) {
                   <Layout
                     messages={messages}
                     streaming={streaming}
+                    toolStatus={toolStatus}
                     isStreaming={isStreaming}
                     error={error}
                     selectable={msgIdx !== null}
@@ -614,6 +622,7 @@ function Header({
 function Layout({
   messages,
   streaming,
+  toolStatus,
   isStreaming,
   error,
   selectable = false,
@@ -621,6 +630,7 @@ function Layout({
 }: {
   messages: ChatMessage[];
   streaming: string;
+  toolStatus: string[];
   isStreaming: boolean;
   error: string | null;
   selectable?: boolean;
@@ -643,9 +653,22 @@ function Layout({
           </text>
           {streaming.length > 0 ? (
             <text>{normalizeMessage(streaming)}</text>
+          ) : toolStatus.length > 0 ? (
+            <text attributes={DIM}>using tools…</text>
           ) : (
             <text attributes={DIM}>waiting for response…</text>
           )}
+        </box>
+      )}
+      {toolStatus.length > 0 && (
+        <box flexDirection="column">
+          {toolStatus.map((line, i) => (
+            <box key={`${i}-${line}`}>
+              <text fg={color.accent} attributes={DIM}>
+                ⚙ {line}
+              </text>
+            </box>
+          ))}
         </box>
       )}
       {error && <text fg={color.error}>{error}</text>}

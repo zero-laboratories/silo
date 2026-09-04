@@ -14,9 +14,10 @@ export interface ToolCall {
 }
 
 export interface StreamChunk {
-  type: 'content' | 'tool' | 'error' | 'done';
+  type: 'content' | 'tool' | 'status' | 'error' | 'done';
   content?: string;
   tool?: ToolCall;
+  status?: string;
   error?: string;
 }
 

@@ -392,6 +392,39 @@ describe('ChatManager MCP tool loop', () => {
     store.close();
   });
 
+  it('yields status chunks while running tools', async () => {
+    const mcp = fakeMcp({
+      callTool: vi.fn(async () => 'temperature 24C'),
+    });
+    let providerCalls = 0;
+    const provider: LLMProvider = {
+      async *sendMessage() {
+        providerCalls++;
+        if (providerCalls === 1) {
+          yield { type: 'tool', tool: { id: 'call_1', name: 'srv__weather', arguments: '{}' } };
+        } else {
+          yield { type: 'content', content: 'final answer' };
+        }
+      },
+      getName: () => 'test',
+      getDefaultModel: () => 'test-model',
+    };
+
+    const { manager, store } = await makeManager(models, 'claude', provider);
+    (manager as unknown as { mcp: McpRegistry | null }).mcp = mcp;
+
+    const chunks: Array<{ type: string; status?: string; content?: string }> = [];
+    for await (const chunk of manager.send('hi')) chunks.push(chunk);
+
+    const statuses = chunks.filter((c) => c.type === 'status');
+    expect(statuses).toEqual([
+      { type: 'status', status: 'Running srv · weather…' },
+      { type: 'status', status: 'srv · weather → temperature 24C' },
+    ]);
+    expect(chunks.filter((c) => c.type === 'content')).toHaveLength(1);
+    store.close();
+  });
+
   it('feeds a tool execution error back to the model', async () => {
     const mcp = fakeMcp({
       callTool: vi.fn(async () => {

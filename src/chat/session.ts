@@ -311,12 +311,19 @@ export class ChatManager {
         const timestamp = new Date();
         const toolResults: ChatMessage[] = [];
         for (const call of calls) {
+          const pretty = call.name.replace('__', ' · ');
+          yield { type: 'status', status: `Running ${pretty}…` };
           let result: string;
           try {
             result = await this.mcp.callTool(call.name, parseToolArguments(call.arguments));
           } catch (err) {
             result = `Error: ${err instanceof Error ? err.message : String(err)}`;
           }
+          const preview = result.replace(/\s+/g, ' ').trim();
+          yield {
+            type: 'status',
+            status: `${pretty} → ${preview.length > 80 ? preview.slice(0, 80) + '…' : preview}`,
+          };
           toolResults.push({
             role: 'tool',
             toolCallId: call.id,
