@@ -1,10 +1,11 @@
 import type { Store } from '../storage/database.js';
-import type { LLMProvider, StreamChunk } from '../models/types.js';
+import type { LLMProvider, StreamChunk, ToolCall } from '../models/types.js';
 import type { ModelConfig } from '../config/type.js';
 import type { ChatMessage, ChatSession } from './types.js';
 import { ContextManager, estimateTokens } from './context.js';
 import { providerFor } from '../models/index.js';
 import { TimeoutError } from '../error/index.js';
+import type { McpRegistry } from '../mcp/registry.js';
 
 function autoTitle(text: string): string {
   const clean = text.replace(/\s+/g, ' ').trim();
@@ -31,6 +32,17 @@ export interface ChatManagerOptions {
   resume?: boolean;
 }
 
+const MAX_TOOL_TURNS = 8;
+
+function parseToolArguments(raw: string): unknown {
+  if (!raw.trim()) return {};
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return {};
+  }
+}
+
 export class ChatManager {
   private store: Store;
   private provider: LLMProvider;
@@ -38,6 +50,7 @@ export class ChatManager {
   private models: Record<string, ModelConfig>;
   private modelName: string;
   private current: ChatSession;
+  private mcp: McpRegistry | null;
 
   constructor(
     store: Store,
@@ -45,11 +58,13 @@ export class ChatManager {
     config: ModelConfig,
     opts: ChatManagerOptions = {},
     models: Record<string, ModelConfig> = {},
+    mcp: McpRegistry | null = null,
   ) {
     this.store = store;
     this.provider = provider;
     this.config = config;
     this.models = models;
+    this.mcp = mcp;
     this.modelName = Object.keys(models).find((n) => models[n] === config) ?? 'custom';
 
     if (opts.resume) {
@@ -263,16 +278,71 @@ export class ChatManager {
         : undefined;
 
     const manager = new ContextManager(this.config.max_tokens ?? 8000);
-    const context = manager.buildContext(this.current.messages, this.current.systemPrompt);
+    const tools = this.mcp ? await this.mcp.listTools() : [];
+    const toolsForProvider = tools.length > 0 ? tools : undefined;
+    const baseContext = manager.buildContext(this.current.messages, this.current.systemPrompt);
 
     let response = '';
     let interrupted = false;
     try {
-      for await (const chunk of this.provider.sendMessage(context, this.config, controller.signal)) {
-        if (chunk.type === 'content' && chunk.content) {
-          response += chunk.content;
-          yield chunk;
+      let context = baseContext;
+      for (let turn = 0; ; turn++) {
+        const calls: ToolCall[] = [];
+        let turnContent = '';
+        for await (const chunk of this.provider.sendMessage(
+          context,
+          this.config,
+          controller.signal,
+          toolsForProvider,
+        )) {
+          if (chunk.type === 'content' && chunk.content) {
+            turnContent += chunk.content;
+            response += chunk.content;
+            yield chunk;
+          } else if (chunk.type === 'tool' && chunk.tool) {
+            calls.push(chunk.tool);
+          }
         }
+
+        if (calls.length === 0 || !this.mcp || turn >= MAX_TOOL_TURNS || controller.signal.aborted) {
+          break;
+        }
+
+        const timestamp = new Date();
+        const toolResults: ChatMessage[] = [];
+        for (const call of calls) {
+          const pretty = call.name.replace('__', ' · ');
+          yield { type: 'status', status: `Running ${pretty}…` };
+          let result: string;
+          try {
+            result = await this.mcp.callTool(call.name, parseToolArguments(call.arguments));
+          } catch (err) {
+            result = `Error: ${err instanceof Error ? err.message : String(err)}`;
+          }
+          const preview = result.replace(/\s+/g, ' ').trim();
+          yield {
+            type: 'status',
+            status: `${pretty} → ${preview.length > 80 ? preview.slice(0, 80) + '…' : preview}`,
+          };
+          toolResults.push({
+            role: 'tool',
+            toolCallId: call.id,
+            content: result,
+            timestamp,
+            id: `tool-${call.id}`,
+          });
+        }
+        context = [
+          ...context,
+          {
+            role: 'assistant',
+            content: turnContent,
+            toolCalls: calls,
+            timestamp,
+            id: `assistant-tools-${turn}`,
+          },
+          ...toolResults,
+        ];
       }
     } catch (err) {
       interrupted = true;

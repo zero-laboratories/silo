@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { loadConfig } from '../../../src/config/index.js';
@@ -43,6 +43,40 @@ describe('loadConfig', () => {
       const cfg = loadConfig(path);
       expect(cfg.general.default_model).toBe('claude');
       expect(Object.keys(cfg.models).length).toBeGreaterThan(0);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('parses MCP server definitions', () => {
+    withConfig(
+      `[general]\ndefault_model = "openai"\n\n[mcp.servers.filesystem]\ncommand = "npx"\nargs = ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]\nenv.FOO = "bar"\n`,
+      (path) => {
+        const cfg = loadConfig(path);
+        expect(cfg.mcp?.servers?.filesystem).toEqual({
+          command: 'npx',
+          args: ['-y', '@modelcontextprotocol/server-filesystem', '/tmp'],
+          env: { FOO: 'bar' },
+        });
+      },
+    );
+  });
+
+  it('defaults MCP servers to an empty set', () => {
+    withConfig('[general]\ndefault_model = "openai"\n', (path) => {
+      const cfg = loadConfig(path);
+      expect(cfg.mcp?.servers).toEqual({});
+    });
+  });
+
+  it('emits an MCP example and servers in the template', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'silo-cfg-'));
+    const path = join(dir, 'new.toml');
+    try {
+      loadConfig(path);
+      const raw = readFileSync(path, 'utf8');
+      expect(raw).toContain('[mcp.servers.');
+      expect(raw).toContain('@modelcontextprotocol/server-filesystem');
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

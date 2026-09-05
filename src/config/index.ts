@@ -44,6 +44,11 @@ export function loadConfig(path?: string): SiloConfig {
       ...defaults.models,
       ...((parsed.models as SiloConfig['models'] | undefined) ?? {}),
     },
+    mcp: {
+      servers: {
+        ...((parsed.mcp as SiloConfig['mcp'] | undefined)?.servers ?? {}),
+      },
+    },
   };
   validateConfig(config, configFile);
   return config;
@@ -74,6 +79,28 @@ function toTemplateString(config: SiloConfig): string {
     lines.push(`model = "${model.model}"`);
     if (model.temperature !== undefined) lines.push(`temperature = ${model.temperature}`);
     if (model.max_tokens !== undefined) lines.push(`max_tokens = ${model.max_tokens}`);
+    lines.push('');
+  }
+
+  const mcp = config.mcp?.servers ?? {};
+  lines.push('# Model Context Protocol servers (tools the model can use).');
+  lines.push('# Each server must print JSON-RPC on stdout. Example:');
+  lines.push('#');
+  lines.push('# [mcp.servers.filesystem]');
+  lines.push('# command = "npx"');
+  lines.push('# args = ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]');
+  lines.push('');
+  for (const [name, server] of Object.entries(mcp)) {
+    lines.push(`[mcp.servers.${name}]`);
+    lines.push(`command = "${server.command}"`);
+    if (server.args !== undefined && server.args.length > 0) {
+      lines.push(`args = [${server.args.map((a) => `"${a}"`).join(', ')}]`);
+    }
+    if (server.env !== undefined) {
+      for (const [k, v] of Object.entries(server.env)) {
+        lines.push(`env.${k} = "${v}"`);
+      }
+    }
     lines.push('');
   }
   return lines.join('\n');

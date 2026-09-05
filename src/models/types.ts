@@ -1,9 +1,23 @@
 import type { ChatMessage } from '../chat/types.js';
 import type { ModelConfig } from '../config/type.js';
 
+export interface ToolDefinition {
+  name: string;
+  description?: string;
+  inputSchema?: unknown;
+}
+
+export interface ToolCall {
+  id: string;
+  name: string;
+  arguments: string;
+}
+
 export interface StreamChunk {
-  type: 'content' | 'error' | 'done';
+  type: 'content' | 'tool' | 'status' | 'error' | 'done';
   content?: string;
+  tool?: ToolCall;
+  status?: string;
   error?: string;
 }
 
@@ -12,6 +26,7 @@ export interface LLMProvider {
     messages: ChatMessage[],
     config: ModelConfig,
     signal?: AbortSignal,
+    tools?: ToolDefinition[],
   ): AsyncGenerator<StreamChunk>;
   getName(): string;
   getDefaultModel(): string;

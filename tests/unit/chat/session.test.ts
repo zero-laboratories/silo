@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -7,6 +7,7 @@ import { ChatManager } from '../../../src/chat/session.js';
 import { TimeoutError } from '../../../src/error/index.js';
 import type { LLMProvider } from '../../../src/models/types.js';
 import type { ModelConfig } from '../../../src/config/type.js';
+import type { McpRegistry } from '../../../src/mcp/registry.js';
 
 async function makeManager(
   models: Record<string, ModelConfig>,
@@ -319,6 +320,206 @@ describe('ChatManager.send', () => {
     const { manager, store } = await makeManager(models, 'claude', busted);
     await expect(collect(manager)).rejects.toThrow('model exploded');
     expect(manager.session.messages.filter((m) => m.role === 'assistant')).toHaveLength(0);
+    store.close();
+  });
+});
+
+describe('ChatManager MCP tool loop', () => {
+  const toolOnlyProvider = (toolName: string): LLMProvider => ({
+    async *sendMessage() {
+      yield {
+        type: 'tool',
+        tool: { id: 'call_1', name: toolName, arguments: '{"city":"Paris"}' },
+      };
+    },
+    getName: () => 'test',
+    getDefaultModel: () => 'test-model',
+  });
+
+  function fakeMcp(overrides: Partial<McpRegistry> = {}): McpRegistry {
+    return {
+      listTools: vi.fn(async () => [{ name: 'srv__weather', description: 'Get weather' }]),
+      callTool: vi.fn(async () => 'sunny, 24C'),
+      ...overrides,
+    } as unknown as McpRegistry;
+  }
+
+  it('executes a tool call and feeds the result back for the final answer', async () => {
+    const receivedMessages: Array<Array<{ role: string; content: string; toolCalls?: unknown[]; toolCallId?: string }>> = [];
+    const provider: LLMProvider = {
+      async *sendMessage(messages: never[]) {
+        const snapshot = messages.map((m: { role: string; content: string; toolCalls?: unknown[]; toolCallId?: string }) => ({
+          role: m.role,
+          content: m.content,
+          toolCalls: m.toolCalls,
+          toolCallId: m.toolCallId,
+        }));
+        receivedMessages.push(snapshot);
+        if (receivedMessages.length === 1) {
+          yield {
+            type: 'tool',
+            tool: { id: 'call_1', name: 'srv__weather', arguments: '{"city":"Paris"}' },
+          };
+        } else {
+          yield { type: 'content', content: 'It is sunny and 24C.' };
+        }
+      },
+      getName: () => 'test',
+      getDefaultModel: () => 'test-model',
+    };
+
+    const mcp = fakeMcp();
+    const { manager, store } = await makeManager(models, 'claude', provider);
+    (manager as unknown as { mcp: McpRegistry | null }).mcp = mcp;
+
+    const out = await collect(manager);
+    expect(out).toBe('It is sunny and 24C.');
+
+    const assistant = manager.session.messages.filter((m) => m.role === 'assistant');
+    expect(assistant).toHaveLength(1);
+    expect(assistant[0].content).toBe('It is sunny and 24C.');
+
+    expect(mcp.callTool).toHaveBeenCalledWith('srv__weather', { city: 'Paris' });
+    const second = receivedMessages[1];
+    expect(second).toHaveLength(3);
+    expect(second[1].role).toBe('assistant');
+    expect(second[1].toolCalls).toEqual([
+      { id: 'call_1', name: 'srv__weather', arguments: '{"city":"Paris"}' },
+    ]);
+    expect(second[2].role).toBe('tool');
+    expect(second[2].toolCallId).toBe('call_1');
+    expect(second[2].content).toBe('sunny, 24C');
+    store.close();
+  });
+
+  it('yields status chunks while running tools', async () => {
+    const mcp = fakeMcp({
+      callTool: vi.fn(async () => 'temperature 24C'),
+    });
+    let providerCalls = 0;
+    const provider: LLMProvider = {
+      async *sendMessage() {
+        providerCalls++;
+        if (providerCalls === 1) {
+          yield { type: 'tool', tool: { id: 'call_1', name: 'srv__weather', arguments: '{}' } };
+        } else {
+          yield { type: 'content', content: 'final answer' };
+        }
+      },
+      getName: () => 'test',
+      getDefaultModel: () => 'test-model',
+    };
+
+    const { manager, store } = await makeManager(models, 'claude', provider);
+    (manager as unknown as { mcp: McpRegistry | null }).mcp = mcp;
+
+    const chunks: Array<{ type: string; status?: string; content?: string }> = [];
+    for await (const chunk of manager.send('hi')) chunks.push(chunk);
+
+    const statuses = chunks.filter((c) => c.type === 'status');
+    expect(statuses).toEqual([
+      { type: 'status', status: 'Running srv · weather…' },
+      { type: 'status', status: 'srv · weather → temperature 24C' },
+    ]);
+    expect(chunks.filter((c) => c.type === 'content')).toHaveLength(1);
+    store.close();
+  });
+
+  it('feeds a tool execution error back to the model', async () => {
+    const mcp = fakeMcp({
+      callTool: vi.fn(async () => {
+        throw new Error('tool exploded');
+      }),
+    });
+    const provider: LLMProvider = {
+      async *sendMessage(messages: never[]) {
+        const hasToolResult = messages.some(
+          (m: { role?: string }) => (m as { role?: string }).role === 'tool',
+        );
+        if (hasToolResult) yield { type: 'content', content: 'I hit an error.' };
+        else
+          yield {
+            type: 'tool',
+            tool: { id: 'call_9', name: 'srv__weather', arguments: '{}' },
+          };
+      },
+      getName: () => 'test',
+      getDefaultModel: () => 'test-model',
+    };
+
+    const { manager, store } = await makeManager(models, 'claude', provider);
+    (manager as unknown as { mcp: McpRegistry | null }).mcp = mcp;
+
+    const out = await collect(manager);
+    expect(out).toBe('I hit an error.');
+    const toolMsg = manager.session.messages;
+    expect(toolMsg.filter((m) => m.role === 'assistant')).toHaveLength(1);
+    expect(mcp.callTool).toHaveBeenCalledTimes(1);
+    store.close();
+  });
+
+  it('runs a chain of tool turns until the model stops calling tools', async () => {
+    let calls = 0;
+    const mcp = fakeMcp({
+      callTool: vi.fn(async () => 'ok'),
+    });
+    const provider: LLMProvider = {
+      async *sendMessage() {
+        calls++;
+        if (calls < 3) {
+          yield {
+            type: 'tool',
+            tool: { id: `call_${calls}`, name: 'srv__weather', arguments: '{}' },
+          };
+        } else {
+          yield { type: 'content', content: 'done after chaining' };
+        }
+      },
+      getName: () => 'test',
+      getDefaultModel: () => 'test-model',
+    };
+
+    const { manager, store } = await makeManager(models, 'claude', provider);
+    (manager as unknown as { mcp: McpRegistry | null }).mcp = mcp;
+
+    expect(await collect(manager)).toBe('done after chaining');
+    expect(calls).toBe(3);
+    expect(mcp.callTool).toHaveBeenCalledTimes(2);
+    store.close();
+  });
+
+  it('bounds the number of tool turns', async () => {
+    const provider: LLMProvider = {
+      async *sendMessage() {
+        yield {
+          type: 'tool',
+          tool: { id: 'call_x', name: 'srv__weather', arguments: '{}' },
+        };
+      },
+      getName: () => 'test',
+      getDefaultModel: () => 'test-model',
+    };
+    const mcp = fakeMcp({ callTool: vi.fn(async () => 'ok') });
+    const { manager, store } = await makeManager(models, 'claude', provider);
+    (manager as unknown as { mcp: McpRegistry | null }).mcp = mcp;
+
+    // Should terminate rather than loop forever.
+    await collect(manager);
+    const maxBound = 8;
+    expect(mcp.callTool).toHaveBeenCalledTimes(maxBound);
+    store.close();
+  });
+
+  it('skips the tool loop entirely when no MCP registry is present', async () => {
+    const provider: LLMProvider = {
+      async *sendMessage() {
+        yield { type: 'content', content: 'plain reply' };
+      },
+      getName: () => 'test',
+      getDefaultModel: () => 'test-model',
+    };
+    const { manager, store } = await makeManager(models, 'claude', provider);
+    expect(await collect(manager)).toBe('plain reply');
     store.close();
   });
 });

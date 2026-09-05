@@ -29,9 +29,7 @@ It's built with OpenTUI (native terminal bindings with React) and TypeScript. Th
 
 - **Minimal.** Only what's necessary. No decorative UI elements, no loading spinners, no bloat.
 - **Beautiful.** Every interaction should feel intentional. Smooth streaming, clear feedback.
-- **Model-agnostic.** The provider is not the product. You own the config, you pick the model.
-- **Linux-native.** Uses XDG paths, follows Linux conventions. Not a port — built for this.
-- **Your data.** Everything stays local. No cloud sync, no telemetry, no accounts.
+- **Model-agnostic.** The provider is not the product. You own the config, you pick the model.  
 
 ## Install
 
@@ -101,12 +99,11 @@ Then run `silo` again. You should see a prompt ready for input.
 
 ## Supported providers
 
-| Provider | Models | Notes |
-|----------|--------|-------|
-| Anthropic | Claude 5 Sonnet | Primary focus, full support |
-| OpenAI | GPT-4, GPT-3.5 | Standard support |
-| Google | Gemini 3.5 Flash | Basic support |
-| OpenRouter | Anything on the platform | Meta-provider, route to whatever |
+- OpenCode Go/Zen
+- OpenAI
+- OpenRouter
+- Anthropic
+- Google
 
 Switch models from within the app via Settings.
 
