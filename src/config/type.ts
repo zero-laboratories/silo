@@ -17,8 +17,9 @@ export interface McpServerConfig {
 
 export interface WebSearchConfig {
   enabled?: boolean;
-  api_key_env?: string;
   max_results?: number;
+  region?: string;
+  safesearch?: number;
 }
 
 export interface SiloConfig {

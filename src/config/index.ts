@@ -107,12 +107,12 @@ function toTemplateString(config: SiloConfig): string {
     lines.push('');
   }
 
-  lines.push('# Built-in web search (Tavily). Set api_key_env to a Tavily API key');
-  lines.push('# (https://tavily.com) to let the model search the web.');
+  lines.push('# Built-in web search (DuckDuckGo Lite). No API key required.');
   lines.push('#');
   lines.push('# [web_search]');
-  lines.push('# api_key_env = "TAVILY_API_KEY"');
   lines.push('# max_results = 5');
+  lines.push('# region = "wt-wt"');
+  lines.push('# safesearch = -1');
   lines.push('');
   return lines.join('\n');
 }

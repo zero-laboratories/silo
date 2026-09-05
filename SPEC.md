@@ -495,24 +495,27 @@ API (OpenAI, OpenRouter). Anthropic and Gemini providers ignore tools for now.
 ### 4.7 Web Search (Built-in)
 
 **Responsibility:** Give the model live web search without a dedicated MCP
-server, using Tavily.
+server and without any API key. Silo uses the DuckDuckGo **Lite** endpoint,
+porting the scraper technique from [ddg-cli](https://github.com/kr4phy/ddg-cli) into
+in-process TypeScript.
 
-**Config (`config.toml`):** the built-in `web_search` tool becomes available
-to the model automatically when a Tavily API key is present in the
-environment. Keys are referenced by env var, never stored in config.
+**Config (`config.toml`):** web search is **on by default** and needs no key.
 
 ```toml
 [web_search]
-api_key_env = "TAVILY_API_KEY"   # required to enable the tool
-max_results = 5                   # optional, default 5
-# enabled = false                 # optional: disable even with a key set
+max_results = 5      # optional, default 5 (max 10)
+region = "wt-wt"     # optional DDG region code, default wt-wt (worldwide)
+safesearch = -1      # optional: -2 off, -1 moderate, 1 strict
+# enabled = false    # optional: disable the tool entirely
 ```
 
 **Components:**
-- `src/tools/tavily.ts` — `webSearchTool(config)` returns a built-in tool
-  (`builtin__web_search`) when a key is configured; `searchWeb()` calls the
-  Tavily Search API (POST `https://api.tavily.com/search`, injectable `fetch`
-  for tests) and formats results as title/URL/snippet for the model.
+- `src/tools/ddg.ts` — `ddgLiteSearch()` fetches `lite.duckduckgo.com/lite/`
+  (browser User-Agent, `kl` region + `kp` safesearch params), parses
+  `result-link` anchors and `result-snippet` cells (stripping tags, decoding
+  entities, resolving DuckDuckGo `uddg` redirects to the real URL), and detects
+  captcha/anomaly walls so failures are friendly, not silent. `ddgSearchTool()`
+  wraps it as a `builtin__web_search` tool with an injectable `fetch` for tests.
 - `src/mcp/registry.ts` — `McpRegistry` accepts a list of in-process
   `BuiltinTool`s alongside external servers; they advertise under the
   `builtin` namespace and route through the exact same tool loop.
@@ -520,10 +523,11 @@ max_results = 5                   # optional, default 5
   `config.web_search`.
 
 **Guarantees:**
-- No Tavily key → tool is not advertised; the model never sees it and no
-  request is made.
-- Search works across every provider (OpenAI, OpenRouter, Anthropic, Gemini)
-  because it goes through the shared tool-call loop.
+- No API key, no account — the model gets search on every provider (OpenAI,
+  OpenRouter, Anthropic, Gemini) through the shared tool-call loop.
+- Best-effort: DuckDuckGo may occasionally rate-limit or captcha-block (common
+  from datacenter/VPS IPs) or change markup; failures surface as a friendly
+  `E:` message and are fed back to the model as `Error: …` text.
 - Results are transient like all tool output — never written to the database.
 
 ---

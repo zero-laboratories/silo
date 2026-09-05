@@ -8,7 +8,7 @@ import { loadConfig, dbPath, configPath } from './config/index.js';
 import { providerFor } from './models/index.js';
 import { ChatManager } from './chat/session.js';
 import { McpRegistry } from './mcp/registry.js';
-import { webSearchTool } from './tools/tavily.js';
+import { ddgSearchTool } from './tools/ddg.js';
 import { App } from './ui/components/App.js';
 import { toUserError } from './error/index.js';
 
@@ -60,7 +60,7 @@ function runChat(modelName?: string, resume?: boolean) {
 
       const provider = providerFor(model.provider);
       const store = new Store();
-      const webSearch = webSearchTool(config.web_search);
+      const webSearch = ddgSearchTool(config.web_search);
       const mcp = new McpRegistry(
         config.mcp?.servers ?? {},
         webSearch ? [webSearch] : [],

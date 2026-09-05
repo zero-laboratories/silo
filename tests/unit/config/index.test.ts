@@ -84,13 +84,14 @@ describe('loadConfig', () => {
 
   it('parses the web_search section', () => {
     withConfig(
-      '[general]\ndefault_model = "openai"\n\n[web_search]\nenabled = true\napi_key_env = "TAVILY_API_KEY"\nmax_results = 3\n',
+      '[general]\ndefault_model = "openai"\n\n[web_search]\nenabled = true\nmax_results = 3\nregion = "us-en"\nsafesearch = -2\n',
       (path) => {
         const cfg = loadConfig(path);
         expect(cfg.web_search).toEqual({
           enabled: true,
-          api_key_env: 'TAVILY_API_KEY',
           max_results: 3,
+          region: 'us-en',
+          safesearch: -2,
         });
       },
     );
@@ -110,7 +111,7 @@ describe('loadConfig', () => {
       loadConfig(path);
       const raw = readFileSync(path, 'utf8');
       expect(raw).toContain('[web_search]');
-      expect(raw).toContain('TAVILY_API_KEY');
+      expect(raw).toContain('region = "wt-wt"');
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
