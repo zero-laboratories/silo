@@ -147,4 +147,34 @@ describe('loadConfig', () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it('parses the filesystem section', () => {
+    withConfig(
+      '[general]\ndefault_model = "openai"\n\n[filesystem]\nenabled = true\nroots = ["~/", "./"]\n',
+      (path) => {
+        const cfg = loadConfig(path);
+        expect(cfg.filesystem).toEqual({ enabled: true, roots: ['~/', './'] });
+      },
+    );
+  });
+
+  it('defaults filesystem access to enabled', () => {
+    withConfig('[general]\ndefault_model = "openai"\n', (path) => {
+      const cfg = loadConfig(path);
+      expect(cfg.filesystem?.enabled).toBe(true);
+    });
+  });
+
+  it('documents the filesystem section in the template', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'silo-cfg-'));
+    const path = join(dir, 'new.toml');
+    try {
+      loadConfig(path);
+      const raw = readFileSync(path, 'utf8');
+      expect(raw).toContain('[filesystem]');
+      expect(raw).toContain('roots =');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });

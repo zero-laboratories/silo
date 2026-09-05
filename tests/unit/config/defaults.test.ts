@@ -46,6 +46,11 @@ describe('getDefaults', () => {
     expect(d.agent?.context_files).toBe(true);
   });
 
+  it('enables filesystem access by default', () => {
+    const d = getDefaults();
+    expect(d.filesystem?.enabled).toBe(true);
+  });
+
   it('returns an independent deep copy on each call', () => {
     const a = getDefaults();
     a.general.default_model = 'mutated';

@@ -56,6 +56,10 @@ export function loadConfig(path?: string): SiloConfig {
       ...defaults.agent,
       ...((parsed.agent as SiloConfig['agent'] | undefined) ?? {}),
     },
+    filesystem: {
+      ...defaults.filesystem,
+      ...((parsed.filesystem as SiloConfig['filesystem'] | undefined) ?? {}),
+    },
   };
   validateConfig(config, configFile);
   return config;
@@ -123,6 +127,12 @@ function toTemplateString(config: SiloConfig): string {
   lines.push('# [agent]');
   lines.push('# skills = true          # expose skills from project/.config dirs as callable tools');
   lines.push('# context_files = true   # load AGENTS.md/CLAUDE.md from the working directory tree');
+  lines.push('');
+  lines.push('# Filesystem access tool.');
+  lines.push('#');
+  lines.push('# [filesystem]');
+  lines.push('# enabled = true');
+  lines.push('# roots = ["~/", "./"]  # absolute or ~/-relative allowed roots (default: cwd + ~)');
   lines.push('');
   return lines.join('\n');
 }

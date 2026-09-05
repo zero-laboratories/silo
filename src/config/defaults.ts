@@ -40,6 +40,9 @@ const defaultConfig: SiloConfig = {
     skills: true,
     context_files: true,
   },
+  filesystem: {
+    enabled: true,
+  },
 };
 
 export function getDefaults(): SiloConfig {

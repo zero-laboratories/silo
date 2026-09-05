@@ -27,6 +27,11 @@ export interface AgentConfig {
   context_files?: boolean;
 }
 
+export interface FilesystemConfig {
+  enabled?: boolean;
+  roots?: string[];
+}
+
 export interface SiloConfig {
   general: {
     default_model: string;
@@ -39,4 +44,5 @@ export interface SiloConfig {
   };
   web_search?: WebSearchConfig;
   agent?: AgentConfig;
+  filesystem?: FilesystemConfig;
 }

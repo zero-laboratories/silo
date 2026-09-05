@@ -571,6 +571,38 @@ skills = true          # expose skills from project/.config dirs as callable too
 - No skills/context files → zero overhead; nothing is added to the request.
 - Skill and context content is transient — never written to the database.
 
+### 4.9 Filesystem Access (Built-in)
+
+**Responsibility:** Let the model read, list, write, move/rename, create, and
+delete files on the local machine — e.g. "move this file to ~/Extras and rename
+it". No MCP server required.
+
+**Config (`config.toml`):** enabled by default; the tool can be scoped to
+specific roots.
+
+```toml
+[filesystem]
+# enabled = true
+# roots = ["~/", "./"]   # absolute or ~/-relative allowed roots (default: cwd + ~)
+```
+
+**Components:**
+- `src/tools/fs.ts` — `filesystemTool()` returns a `builtin__filesystem` tool
+  with an `action` enum: `read`, `list`, `write`, `move`, `mkdir`, `delete`.
+  Paths are resolved against the working directory, with `~/` mapping to
+  `$HOME`. `move` = rename or move (parents are created as needed); `delete`
+  removes files and empty dirs only (never recursive).
+- Guards: every operation must land inside an allowed root; protected paths
+  (`~/.ssh`, `~/.gnupg`, `~/.config/silo`, the silo data dir, and any `.git`
+  directory) are always blocked; reads are capped (~256 KB) and writes are
+  size-limited.
+
+**Guarantees:**
+- No silent escapes: out-of-root and protected writes fail with a friendly
+  `E:`-style message that is fed back to the model as `Error: …`.
+- Results are transient — never written to the database.
+- Disable entirely with `enabled = false`.
+
 ---
 
 ## 5. User Workflows
@@ -732,7 +764,8 @@ silo/
 │   ├── tools/
 │   │   ├── index.ts                # Builtin tool barrel
 │   │   ├── types.ts                # BuiltinTool interface
-│   │   └── ddg.ts                  # DuckDuckGo Lite web search
+│   │   ├── ddg.ts                  # DuckDuckGo Lite web search
+│   │   └── fs.ts                   # Filesystem access tool (read/list/write/move/…)
 │   ├── skills/
 │   │   ├── index.ts                # Skills barrel
 │   │   ├── types.ts                # Skill interface

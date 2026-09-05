@@ -8,7 +8,7 @@ import { loadConfig, dbPath, configPath } from './config/index.js';
 import { providerFor } from './models/index.js';
 import { ChatManager } from './chat/session.js';
 import { McpRegistry } from './mcp/registry.js';
-import { ddgSearchTool } from './tools/ddg.js';
+import { ddgSearchTool, filesystemTool } from './tools/index.js';
 import { loadSkills, SkillRegistry } from './skills/index.js';
 import { loadContextFiles, formatContextFiles } from './context/index.js';
 import { App } from './ui/components/App.js';
@@ -73,7 +73,12 @@ function runChat(modelName?: string, resume?: boolean) {
       const agent = config.agent ?? {};
       const contextFiles = agent.context_files === false ? '' : formatContextFiles(loadContextFiles());
       const skillTools = agent.skills === false ? [] : new SkillRegistry(loadSkills()).listTools();
-      const builtins = [...(webSearch ? [webSearch] : []), ...skillTools];
+      const fsTool = filesystemTool(config.filesystem ?? { enabled: true });
+      const builtins = [
+        ...(webSearch ? [webSearch] : []),
+        ...skillTools,
+        ...(fsTool ? [fsTool] : []),
+      ];
       const mcp = new McpRegistry(config.mcp?.servers ?? {}, builtins);
       const manager = new ChatManager(store, provider, model, { resume, contextFiles }, {}, mcp);
 
