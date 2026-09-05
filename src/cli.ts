@@ -9,6 +9,8 @@ import { providerFor } from './models/index.js';
 import { ChatManager } from './chat/session.js';
 import { McpRegistry } from './mcp/registry.js';
 import { ddgSearchTool } from './tools/ddg.js';
+import { loadSkills, SkillRegistry } from './skills/index.js';
+import { loadContextFiles, formatContextFiles } from './context/index.js';
 import { App } from './ui/components/App.js';
 import { toUserError } from './error/index.js';
 
@@ -16,7 +18,7 @@ export function buildCli(): typeof program {
   program
     .name('silo')
     .description('An open source agent for general intelligence, in your terminal.')
-    .version('0.9.1');
+    .version('0.9.2');
 
   program
     .command('chat')
@@ -33,6 +35,13 @@ export function buildCli(): typeof program {
     .action(() => {
       console.log(`Config:  ${configPath()}`);
       console.log(`Database: ${dbPath()}`);
+    });
+
+  program
+    .command('skills')
+    .description('List available skills and active context files (AGENTS.md/CLAUDE.md)')
+    .action(() => {
+      listSkills();
     });
 
   program
@@ -61,11 +70,12 @@ function runChat(modelName?: string, resume?: boolean) {
       const provider = providerFor(model.provider);
       const store = new Store();
       const webSearch = ddgSearchTool(config.web_search);
-      const mcp = new McpRegistry(
-        config.mcp?.servers ?? {},
-        webSearch ? [webSearch] : [],
-      );
-      const manager = new ChatManager(store, provider, model, { resume }, {}, mcp);
+      const agent = config.agent ?? {};
+      const contextFiles = agent.context_files === false ? '' : formatContextFiles(loadContextFiles());
+      const skillTools = agent.skills === false ? [] : new SkillRegistry(loadSkills()).listTools();
+      const builtins = [...(webSearch ? [webSearch] : []), ...skillTools];
+      const mcp = new McpRegistry(config.mcp?.servers ?? {}, builtins);
+      const manager = new ChatManager(store, provider, model, { resume, contextFiles }, {}, mcp);
 
       const renderer = await createCliRenderer({
         screenMode: 'alternate-screen',
@@ -91,6 +101,32 @@ function runChat(modelName?: string, resume?: boolean) {
       process.exit(1);
     }
   })();
+}
+
+function listSkills() {
+  try {
+    const skills = loadSkills();
+    console.log('Skills:');
+    if (skills.length === 0) {
+      console.log('  (none found)');
+    }
+    for (const skill of skills) {
+      console.log(`  ${skill.name}`);
+      if (skill.description) console.log(`    ${skill.description}`);
+      console.log(`    ${skill.dir}`);
+    }
+    const files = loadContextFiles();
+    console.log('\nContext files (AGENTS.md/CLAUDE.md):');
+    if (files.length === 0) {
+      console.log('  (none found)');
+    }
+    for (const file of files) {
+      console.log(`  ${file.name}: ${file.path}`);
+    }
+  } catch (err) {
+    console.error(toUserError(err));
+    process.exit(1);
+  }
 }
 
 function exportChat(chatId: string, out?: string) {

@@ -116,4 +116,35 @@ describe('loadConfig', () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it('parses the agent section', () => {
+    withConfig(
+      '[general]\ndefault_model = "openai"\n\n[agent]\nskills = false\ncontext_files = true\n',
+      (path) => {
+        const cfg = loadConfig(path);
+        expect(cfg.agent).toEqual({ skills: false, context_files: true });
+      },
+    );
+  });
+
+  it('defaults agent behavior to enabled', () => {
+    withConfig('[general]\ndefault_model = "openai"\n', (path) => {
+      const cfg = loadConfig(path);
+      expect(cfg.agent?.skills).toBe(true);
+      expect(cfg.agent?.context_files).toBe(true);
+    });
+  });
+
+  it('documents the agent section in the template', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'silo-cfg-'));
+    const path = join(dir, 'new.toml');
+    try {
+      loadConfig(path);
+      const raw = readFileSync(path, 'utf8');
+      expect(raw).toContain('[agent]');
+      expect(raw).toContain('context_files = true');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });

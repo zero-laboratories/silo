@@ -22,6 +22,11 @@ export interface WebSearchConfig {
   safesearch?: number;
 }
 
+export interface AgentConfig {
+  skills?: boolean;
+  context_files?: boolean;
+}
+
 export interface SiloConfig {
   general: {
     default_model: string;
@@ -33,4 +38,5 @@ export interface SiloConfig {
     servers?: Record<string, McpServerConfig>;
   };
   web_search?: WebSearchConfig;
+  agent?: AgentConfig;
 }

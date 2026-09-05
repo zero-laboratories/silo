@@ -30,6 +30,7 @@ function sanitizeTitle(raw: string): string | null {
 
 export interface ChatManagerOptions {
   resume?: boolean;
+  contextFiles?: string;
 }
 
 const MAX_TOOL_TURNS = 8;
@@ -51,6 +52,7 @@ export class ChatManager {
   private modelName: string;
   private current: ChatSession;
   private mcp: McpRegistry | null;
+  private contextFiles: string;
 
   constructor(
     store: Store,
@@ -65,6 +67,7 @@ export class ChatManager {
     this.config = config;
     this.models = models;
     this.mcp = mcp;
+    this.contextFiles = opts.contextFiles ?? '';
     this.modelName = Object.keys(models).find((n) => models[n] === config) ?? 'custom';
 
     if (opts.resume) {
@@ -280,7 +283,8 @@ export class ChatManager {
     const manager = new ContextManager(this.config.max_tokens ?? 8000);
     const tools = this.mcp ? await this.mcp.listTools() : [];
     const toolsForProvider = tools.length > 0 ? tools : undefined;
-    const baseContext = manager.buildContext(this.current.messages, this.current.systemPrompt);
+    const systemParts = [this.current.systemPrompt, this.contextFiles].filter((p) => p.length > 0);
+    const baseContext = manager.buildContext(this.current.messages, systemParts);
 
     let response = '';
     let interrupted = false;

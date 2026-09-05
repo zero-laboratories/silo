@@ -36,6 +36,10 @@ const defaultConfig: SiloConfig = {
       max_tokens: 2000,
     },
   },
+  agent: {
+    skills: true,
+    context_files: true,
+  },
 };
 
 export function getDefaults(): SiloConfig {
