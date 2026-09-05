@@ -603,6 +603,38 @@ specific roots.
 - Results are transient — never written to the database.
 - Disable entirely with `enabled = false`.
 
+### 4.10 Model Handling & Tool-Call Guidance
+
+**Responsibility:** Make the tool-call loop robust across very different model
+families — including *agentic/computer-use* models that have their own native
+tool vocabulary (e.g. `Read`, `exec`, `filesystem`) and tend to ignore
+advertised tool names.
+
+**Problem observed:** an agentic model on OpenRouter emitted only its own tool
+names during a chat. Silo's registry rejected every call, and the model kept
+re-guessing names instead of using the advertised `builtin__*` tools. Silo now
+accepts bare builtin names (`filesystem` → `builtin__filesystem`) and lists the
+available tools on unknown calls.
+
+**Planned hardening (v0.9.3):**
+1. **Model-agnostic tool guidance:** inject a short system-prompt block that
+   names every available tool exactly (`builtin__filesystem`,
+   `builtin__web_search`, …) and instructs the model to call those exact names —
+   not native or invented ones.
+2. **Sane default-model fallback:** default to `openrouter/auto` (top-performer
+   routing) unless the user explicitly sets `default_model` / a model entry, so
+   weak or tool-hostile free endpoints are never the silent default.
+3. **Repeated-miss guardrail:** after N consecutive unknown-tool-call errors,
+   surface a user-facing warning that the active model may not support tool use
+   (or is misusing it) and suggest switching models — instead of burn-in
+   error/tool loops that look like a hang.
+
+**Guarantees:**
+- Unknown tool names never execute anything and never hang the loop.
+- Errors keep the conversation alive and give the model the information it
+  needs to recover (`Available tools: …`).
+- Guidance and warnings are transient — never written to the database.
+
 ---
 
 ## 5. User Workflows
