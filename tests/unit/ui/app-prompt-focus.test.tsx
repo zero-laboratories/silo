@@ -80,6 +80,7 @@ describe('App prompt focus', () => {
       await sendMessage(setup, 'hello');
       await blurPrompt(setup);
       setup.mockInput.pressKey('e');
+      await settle();
       const frame = await setup.waitForFrame((f) => f.includes('Select:'));
       expect(frame).toContain('Select:');
     } finally {
@@ -94,6 +95,7 @@ describe('App prompt focus', () => {
       await sendMessage(setup, 'hello');
       await blurPrompt(setup);
       setup.mockInput.pressKey('e');
+      await settle();
       await setup.waitForFrame((f) => f.includes('Select:'));
       setup.mockInput.pressKey('ESCAPE');
       await settle();
