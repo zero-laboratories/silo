@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useKeyboard } from '@opentui/react';
-import type { ParsedKey } from '@opentui/core';
+import { useKeyboard, usePaste, useRenderer } from '@opentui/react';
+import { ClipboardTarget, createHostClipboard, decodePasteBytes } from '@opentui/core';
+import type { HostClipboardService, ParsedKey } from '@opentui/core';
 import { Logo } from './Logo.js';
 import { Sidebar } from './Sidebar.js';
 import { Settings } from './Settings.js';
@@ -58,6 +59,51 @@ export function App({ manager, config, onRequestClose }: AppProps) {
   }>({ active: false, query: '', results: [], idx: 0 });
   const [helpVisible, setHelpVisible] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const renderer = useRenderer();
+  const hostClipboardRef = useRef<HostClipboardService | null>(null);
+
+  const applyToActiveField = (fn: (prev: string) => string) => {
+    if (renaming !== null) setRenameInput(fn);
+    else if (tagging !== null) setTagInput(fn);
+    else if (promptEdit !== null) setPromptInput(fn);
+    else if (msgEditing !== null) setEditContent(fn);
+    else if (search.active)
+      setSearch((s) => {
+        const query = fn(s.query);
+        return { ...s, query, results: manager.searchChat(session.id, query), idx: 0 };
+      });
+    else setInput(fn);
+  };
+
+  const activeFieldValue = (): string => {
+    if (renaming !== null) return renameInput;
+    if (tagging !== null) return tagInput;
+    if (promptEdit !== null) return promptInput;
+    if (msgEditing !== null) return editContent;
+    if (search.active) return search.query;
+    return input;
+  };
+
+  const pasteFromHostClipboard = async (): Promise<void> => {
+    try {
+      if (!hostClipboardRef.current) {
+        hostClipboardRef.current = createHostClipboard();
+      }
+      const result = await hostClipboardRef.current.read({ preferredTypes: ['text/plain'] });
+      if (result.status === 'read') {
+        const text = decodePasteBytes(result.representation.bytes);
+        if (text) applyToActiveField((prev) => prev + text);
+      }
+    } catch {
+      // best-effort: platforms without a readable clipboard are a no-op
+    }
+  };
+
+  usePaste((ev) => {
+    if (isStreaming) return;
+    const text = decodePasteBytes(ev.bytes);
+    if (text) applyToActiveField((prev) => prev + text);
+  });
 
   useKeyboard((e) => {
     const inputChar = inputCharOf(e);
@@ -75,7 +121,21 @@ export function App({ manager, config, onRequestClose }: AppProps) {
       return;
     }
 
-    if (e.ctrl && e.name === 'x') {
+    if (e.ctrl && e.shift) {
+      const ch = e.name?.toLowerCase();
+      if (ch === 'v' || ch === 'c' || ch === 'x') {
+        if (ch === 'v') {
+          void pasteFromHostClipboard();
+        } else {
+          const text = activeFieldValue();
+          if (text) renderer.copyToClipboardOSC52(text, ClipboardTarget.Clipboard);
+          if (ch === 'x') applyToActiveField(() => '');
+        }
+        return;
+      }
+    }
+
+    if (e.ctrl && e.name === 'x' && !e.shift) {
       onRequestClose?.();
       return;
     }
