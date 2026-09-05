@@ -18,7 +18,7 @@ export function buildCli(): typeof program {
   program
     .name('silo')
     .description('An open source agent for general intelligence, in your terminal.')
-    .version('0.9.1');
+    .version('0.9.2');
 
   program
     .command('chat')
