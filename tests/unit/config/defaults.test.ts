@@ -40,6 +40,12 @@ describe('getDefaults', () => {
     });
   });
 
+  it('returns default agent settings', () => {
+    const d = getDefaults();
+    expect(d.agent?.skills).toBe(true);
+    expect(d.agent?.context_files).toBe(true);
+  });
+
   it('returns an independent deep copy on each call', () => {
     const a = getDefaults();
     a.general.default_model = 'mutated';

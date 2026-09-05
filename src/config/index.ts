@@ -52,6 +52,10 @@ export function loadConfig(path?: string): SiloConfig {
     web_search: {
       ...((parsed.web_search as SiloConfig['web_search'] | undefined) ?? {}),
     },
+    agent: {
+      ...defaults.agent,
+      ...((parsed.agent as SiloConfig['agent'] | undefined) ?? {}),
+    },
   };
   validateConfig(config, configFile);
   return config;
@@ -113,6 +117,12 @@ function toTemplateString(config: SiloConfig): string {
   lines.push('# max_results = 5');
   lines.push('# region = "wt-wt"');
   lines.push('# safesearch = -1');
+  lines.push('');
+  lines.push('# Agent context and skills.');
+  lines.push('#');
+  lines.push('# [agent]');
+  lines.push('# skills = true          # expose skills from project/.config dirs as callable tools');
+  lines.push('# context_files = true   # load AGENTS.md/CLAUDE.md from the working directory tree');
   lines.push('');
   return lines.join('\n');
 }

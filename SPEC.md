@@ -530,6 +530,47 @@ safesearch = -1      # optional: -2 off, -1 moderate, 1 strict
   `E:` message and are fed back to the model as `Error: …` text.
 - Results are transient like all tool output — never written to the database.
 
+### 4.8 Skills & Project Context Files
+
+**Responsibility:** Give the model the working directory's own instructions and
+reusable, user-authored skill definitions — no database rows, no network.
+
+**Project context files (`AGENTS.md` / `CLAUDE.md`):** on every `silo chat`
+launch, Silo walks up from the current directory collecting `AGENTS.md` and
+`CLAUDE.md` (nearest file first, highest priority). Their contents are merged
+into the request as an extra system message beside the per-chat prompt, so the
+model behaves per the repo/user instructions.
+
+```toml
+[agent]
+context_files = true   # load AGENTS.md/CLAUDE.md from the working directory tree
+skills = true          # expose skills from project/.config dirs as callable tools
+```
+
+**Components:**
+- `src/context/loader.ts` — `findContextFiles()` walks up the tree returning
+  `{name, path}` for `AGENTS.md`/`CLAUDE.md`; `loadContextFiles()` reads them;
+  `formatContextFiles()` emits a labelled system-prompt block.
+- `src/skills/loader.ts` — `parseSkillFrontmatter()` extracts `name`/
+  `description` from the YAML frontmatter of a `SKILL.md`; `loadSkills()` scans
+  project dirs (`.silo/skills`, `.agents/skills`, `.opencode/skills`,
+  `.claude/skills`, walking up) then user dirs (`~/.config/silo/skills`,
+  `~/.config/opencode/skills`, `~/.claude/skills`, `~/.agents/skills`),
+  nearest definition winning per name.
+- `src/skills/registry.ts` — `SkillRegistry` advertises two in-process
+  `builtin` tools through the same loop as MCP servers: `builtin__list_skills`
+  (name + description of every discovered skill) and `builtin__skill` (returns
+  a skill's full markdown instructions, plus any invocation arguments). Tools
+  and skills are loaded once at startup and are never persisted.
+- `src/cli.ts` — wires skills + context files based on `config.agent`; gives
+  `silo skills` to list what was discovered.
+
+**Guarantees:**
+- Skills and context files follow the common Claude/opencode conventions, so a
+  single set of `SKILL.md`/`AGENTS.md` files works across agents.
+- No skills/context files → zero overhead; nothing is added to the request.
+- Skill and context content is transient — never written to the database.
+
 ---
 
 ## 5. User Workflows
@@ -684,6 +725,22 @@ silo/
 │   │   ├── openai.ts               # OpenAI impl
 │   │   ├── google.ts               # Gemini impl
 │   │   └── openrouter.ts           # OpenRouter impl
+│   ├── mcp/
+│   │   ├── index.ts                # MCP barrel
+│   │   ├── client.ts               # MCP stdio client
+│   │   └── registry.ts             # Tool registry (servers + builtins)
+│   ├── tools/
+│   │   ├── index.ts                # Builtin tool barrel
+│   │   ├── types.ts                # BuiltinTool interface
+│   │   └── ddg.ts                  # DuckDuckGo Lite web search
+│   ├── skills/
+│   │   ├── index.ts                # Skills barrel
+│   │   ├── types.ts                # Skill interface
+│   │   ├── loader.ts               # SKILL.md discovery + frontmatter parsing
+│   │   └── registry.ts             # SkillRegistry (list_skills/skill tools)
+│   ├── context/
+│   │   ├── index.ts                # Context barrel
+│   │   └── loader.ts               # AGENTS.md/CLAUDE.md discovery + formatting
 │   ├── chat/
 │   │   ├── index.ts                # Chat logic
 │   │   ├── session.ts              # ChatSession management

@@ -13,16 +13,19 @@ export class ContextManager {
     this.maxTokens = modelMaxTokens - BUFFER_TOKENS;
   }
 
-  buildContext(messages: ChatMessage[], systemPrompt: string): ChatMessage[] {
-    let totalTokens = estimateTokens(systemPrompt);
+  buildContext(messages: ChatMessage[], systemPrompt: string | string[]): ChatMessage[] {
+    const systemParts = (Array.isArray(systemPrompt) ? systemPrompt : [systemPrompt]).filter(
+      (p) => p.length > 0,
+    );
     const head: ChatMessage[] = [];
-
-    if (systemPrompt) {
+    let totalTokens = 0;
+    for (const [index, part] of systemParts.entries()) {
+      totalTokens += estimateTokens(part);
       head.push({
         role: 'system',
-        content: systemPrompt,
+        content: part,
         timestamp: new Date(),
-        id: 'system',
+        id: `system-${index}`,
       });
     }
 

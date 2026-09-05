@@ -23,6 +23,24 @@ describe('ContextManager', () => {
     expect(context[0].content).toBe('You are a helpful assistant.');
   });
 
+  it('supports multiple system messages (e.g. context files)', () => {
+    const manager = new ContextManager(1000);
+    const context = manager.buildContext([msg('hi')], [
+      'You are a helpful assistant.',
+      '## AGENTS.md instructions',
+    ]);
+    expect(context.filter((m) => m.role === 'system')).toHaveLength(2);
+    expect(context[0].content).toBe('You are a helpful assistant.');
+    expect(context[1].content).toBe('## AGENTS.md instructions');
+  });
+
+  it('skips empty system parts', () => {
+    const manager = new ContextManager(1000);
+    const context = manager.buildContext([msg('hi')], ['', 'Only this one.']);
+    expect(context.filter((m) => m.role === 'system')).toHaveLength(1);
+    expect(context[0].content).toBe('Only this one.');
+  });
+
   it('keeps messages within the token budget', () => {
     const manager = new ContextManager(100);
     const messages = Array.from({ length: 20 }, (_, i) => msg(`message ${i} `));

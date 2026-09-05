@@ -259,6 +259,43 @@ describe('ChatManager.send', () => {
     store.close();
   });
 
+  it('injects context files as a system message alongside the per-chat prompt', async () => {
+    const { Store } = await import('../../../src/storage/database.js');
+    const store = new Store(join(mkdtempSync(join(tmpdir(), 'silo-test-')), 'test.db'));
+    const config = models.claude;
+    const captured: Array<Array<{ role: string; content: string }>> = [];
+    const provider: LLMProvider = {
+      async *sendMessage(messages: never[]) {
+        captured.push(
+          messages.map((m) => ({
+            role: (m as { role: string }).role,
+            content: (m as { content: string }).content,
+          })),
+        );
+        yield { type: 'content', content: 'ok' };
+      },
+      getName: () => 'test',
+      getDefaultModel: () => 'test-model',
+    };
+    const contextFiles = '## AGENTS.md (/tmp/AGENTS.md)\n\nBuild with pnpm.';
+    const manager = new ChatManager(
+      store,
+      provider,
+      config,
+      { contextFiles },
+      models,
+    );
+    try {
+      for await (const _ of manager.send('hi')) void _;
+      const sent = captured[0];
+      expect(sent[0].role).toBe('system');
+      expect(sent[0].content).toBe(contextFiles);
+      expect(sent[1].role).toBe('user');
+    } finally {
+      store.close();
+    }
+  });
+
   it('raises a TimeoutError when the provider hangs', async () => {
     const withTimeout: Record<string, ModelConfig> = {
       claude: { provider: 'anthropic', model: 'x', timeout: 0.05 },
