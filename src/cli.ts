@@ -15,8 +15,8 @@ import { toUserError } from './error/index.js';
 export function buildCli(): typeof program {
   program
     .name('silo')
-    .description('A minimal, model-agnostic CLI chat app for Linux.')
-    .version('0.9.0');
+    .description('An open source agent for general intelligence, in your terminal.')
+    .version('0.9.1');
 
   program
     .command('chat')
