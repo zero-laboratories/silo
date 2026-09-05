@@ -205,7 +205,8 @@ export function filesystemTool(config: FilesystemConfig, opts: { cwd?: string; h
       'filesystem roots (the current working directory and your home directory by default). Move ' +
       'handles both moving between directories and renaming. Paths may be relative to the current ' +
       'directory or start with ~/ for home. Protected paths (.ssh, .gnupg, silo config/data, .git) ' +
-      'are always off-limits.',
+      'are always off-limits. Do NOT read an entire project to understand it: use "list" on a ' +
+      'directory for an overview, and only "read" the specific files a task actually needs.',
     inputSchema: {
       type: 'object',
       properties: {

@@ -69,6 +69,7 @@ describe('builtin filesystem tool', () => {
     const tool = filesystemTool({ enabled: true });
     expect(tool?.namespace).toBe('builtin');
     expect(tool?.name).toBe('filesystem');
+    expect(tool?.description).toContain('Do NOT read an entire project');
   });
 
   it('requires action and path', async () => {
