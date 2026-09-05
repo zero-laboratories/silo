@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useKeyboard, usePaste, useRenderer } from '@opentui/react';
+import type { ScrollBoxProps } from '@opentui/react';
 import { ClipboardTarget, createHostClipboard, decodePasteBytes } from '@opentui/core';
 import type { HostClipboardService, ParsedKey } from '@opentui/core';
 import { Logo } from './Logo.js';
@@ -58,6 +59,7 @@ export function App({ manager, config, onRequestClose }: AppProps) {
     idx: number;
   }>({ active: false, query: '', results: [], idx: 0 });
   const [helpVisible, setHelpVisible] = useState(false);
+  const [chatScrollTop, setChatScrollTop] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const renderer = useRenderer();
   const hostClipboardRef = useRef<HostClipboardService | null>(null);
@@ -112,6 +114,15 @@ export function App({ manager, config, onRequestClose }: AppProps) {
     const isUp = e.name === 'up';
     const isDown = e.name === 'down';
     const isBack = e.name === 'backspace' || e.name === 'delete';
+
+    if (e.name === 'home') {
+      setChatScrollTop(0);
+      return;
+    }
+    if (e.name === 'end') {
+      setChatScrollTop(Number.MAX_SAFE_INTEGER);
+      return;
+    }
 
     if (isStreaming) {
       if (e.ctrl) {
@@ -216,10 +227,12 @@ export function App({ manager, config, onRequestClose }: AppProps) {
     if (search.active) {
       if (isReturn) {
         setSearch((s) => ({ ...s, active: false }));
+        setChatScrollTop(null);
         return;
       }
       if (isEscape) {
         setSearch((s) => ({ ...s, active: false, query: '', results: [] }));
+        setChatScrollTop(null);
         return;
       }
       if (isUp) {
@@ -444,6 +457,7 @@ export function App({ manager, config, onRequestClose }: AppProps) {
     setError(null);
     setStreaming('');
     setToolStatus([]);
+    setChatScrollTop(null);
     setChats(manager.listChats());
     setView('chat');
   }
@@ -453,6 +467,7 @@ export function App({ manager, config, onRequestClose }: AppProps) {
     setMessages(manager.session.messages);
     setInput('');
     setError(null);
+    setChatScrollTop(null);
     setView('chat');
   }
 
@@ -462,6 +477,7 @@ export function App({ manager, config, onRequestClose }: AppProps) {
     setChats(next);
     setChatIdx((i) => Math.max(0, Math.min(i, next.length - 1)));
     setMessages(manager.session.messages);
+    setChatScrollTop(null);
     setError(null);
   }
 
@@ -568,8 +584,16 @@ export function App({ manager, config, onRequestClose }: AppProps) {
             ) : messages.length === 0 && !isStreaming && !streaming && !error ? (
               <WelcomeScreen mode={mode} />
             ) : (
-              <box flexDirection="column" flexGrow={1}>
-                <scrollbox flexGrow={1} scrollY>
+              <box flexDirection="column" flexGrow={1} flexShrink={1}>
+                <scrollbox
+                  key={session.id}
+                  flexGrow={1}
+                  flexShrink={1}
+                  scrollY
+                  stickyScroll
+                  stickyStart="bottom"
+                  {...(({ scrollTop: chatScrollTop ?? undefined }) as unknown as ScrollBoxProps)}
+                >
                   <Layout
                     messages={messages}
                     streaming={streaming}
@@ -584,7 +608,7 @@ export function App({ manager, config, onRequestClose }: AppProps) {
             )}
           </box>
           {msgIdx !== null && msgEditing === null && (
-            <box justifyContent="center" marginBottom={1}>
+            <box justifyContent="center" marginBottom={1} flexShrink={0}>
               <box borderStyle="single" borderColor={color.warning} paddingX={1}>
                 <text fg={color.warning}>
                   Select: ↑/↓ · e edit · d delete · Enter/Esc done
@@ -595,7 +619,7 @@ export function App({ manager, config, onRequestClose }: AppProps) {
           {msgEditing !== null && (
             <EditBar value={editContent} />
           )}
-          <box alignItems="center" flexDirection="column">
+          <box alignItems="center" flexDirection="column" flexShrink={0}>
             {!search.active && msgIdx === null && msgEditing === null && (
               <InputBox value={input} isStreaming={isStreaming} />
             )}
@@ -836,7 +860,7 @@ function SearchResults({
 
 function EditBar({ value }: { value: string }) {
   return (
-    <box borderStyle="single" borderColor={color.warning} width="100%" paddingX={1} marginBottom={1}>
+    <box borderStyle="single" borderColor={color.warning} width="100%" paddingX={1} marginBottom={1} flexShrink={0}>
       <text fg={color.warning} attributes={BOLD}>
         Edit:{' '}
       </text>

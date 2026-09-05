@@ -8,6 +8,8 @@ const shortcuts: Array<[string, string, boolean]> = [
   ['Ctrl+S', 'Open sidebar', false],
   ['Ctrl+G', 'Open settings', false],
   ['Ctrl+F', 'Search current chat', false],
+  ['Home', 'Scroll to start of chat', false],
+  ['End', 'Scroll to end of chat', false],
   ['Ctrl+C', 'Stop streaming', false],
   ['Ctrl+Shift+V', 'Paste', false],
   ['Ctrl+Shift+C', 'Copy input', false],
