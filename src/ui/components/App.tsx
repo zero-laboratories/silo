@@ -60,6 +60,7 @@ export function App({ manager, config, onRequestClose }: AppProps) {
   }>({ active: false, query: '', results: [], idx: 0 });
   const [helpVisible, setHelpVisible] = useState(false);
   const [chatScrollTop, setChatScrollTop] = useState<number | null>(null);
+  const [promptFocused, setPromptFocused] = useState(true);
   const abortRef = useRef<AbortController | null>(null);
   const renderer = useRenderer();
   const hostClipboardRef = useRef<HostClipboardService | null>(null);
@@ -152,11 +153,14 @@ export function App({ manager, config, onRequestClose }: AppProps) {
     }
 
     if (helpVisible) {
-      if (inputChar === '?' || isEscape) setHelpVisible(false);
+      if (inputChar === '?' || isEscape) {
+        setHelpVisible(false);
+        setPromptFocused(true);
+      }
       return;
     }
 
-    if (input.length === 0 && inputChar === '?') {
+    if (input.length === 0 && !promptFocused && inputChar === '?') {
       setHelpVisible(true);
       return;
     }
@@ -172,6 +176,7 @@ export function App({ manager, config, onRequestClose }: AppProps) {
         setConfirmDelete(null);
       } else if (inputChar === 'n' || inputChar === 'N' || isEscape) {
         setConfirmDelete(null);
+        setPromptFocused(true);
       }
       return;
     }
@@ -181,9 +186,11 @@ export function App({ manager, config, onRequestClose }: AppProps) {
         doRenameChat(renaming, renameInput);
         setRenaming(null);
         setRenameInput('');
+        setPromptFocused(true);
       } else if (isEscape) {
         setRenaming(null);
         setRenameInput('');
+        setPromptFocused(true);
       } else if (isBack) {
         setRenameInput((prev) => prev.slice(0, -1));
       } else if (inputChar) {
@@ -197,9 +204,11 @@ export function App({ manager, config, onRequestClose }: AppProps) {
         doSetTags(tagging, tagInput);
         setTagging(null);
         setTagInput('');
+        setPromptFocused(true);
       } else if (isEscape) {
         setTagging(null);
         setTagInput('');
+        setPromptFocused(true);
       } else if (isBack) {
         setTagInput((prev) => prev.slice(0, -1));
       } else if (inputChar) {
@@ -213,9 +222,11 @@ export function App({ manager, config, onRequestClose }: AppProps) {
         doSetSystemPrompt(promptEdit, promptInput);
         setPromptEdit(null);
         setPromptInput('');
+        setPromptFocused(true);
       } else if (isEscape) {
         setPromptEdit(null);
         setPromptInput('');
+        setPromptFocused(true);
       } else if (isBack) {
         setPromptInput((prev) => prev.slice(0, -1));
       } else if (inputChar) {
@@ -228,11 +239,13 @@ export function App({ manager, config, onRequestClose }: AppProps) {
       if (isReturn) {
         setSearch((s) => ({ ...s, active: false }));
         setChatScrollTop(null);
+        setPromptFocused(true);
         return;
       }
       if (isEscape) {
         setSearch((s) => ({ ...s, active: false, query: '', results: [] }));
         setChatScrollTop(null);
+        setPromptFocused(true);
         return;
       }
       if (isUp) {
@@ -264,10 +277,12 @@ export function App({ manager, config, onRequestClose }: AppProps) {
       if (isEscape) {
         setMsgIdx(null);
         setMsgCursor(0);
+        setPromptFocused(true);
         return;
       }
       if (isReturn) {
         setMsgIdx(null);
+        setPromptFocused(true);
         return;
       }
       if (isUp) setMsgCursor((c) => Math.max(0, c - 1));
@@ -279,6 +294,7 @@ export function App({ manager, config, onRequestClose }: AppProps) {
       } else if (inputChar === 'd' || inputChar === 'D') {
         deleteMessage(messages[msgCursor]);
         setMsgIdx(null);
+        setPromptFocused(true);
       }
       return;
     }
@@ -288,11 +304,13 @@ export function App({ manager, config, onRequestClose }: AppProps) {
         doEditMessage(msgEditing, editContent);
         setMsgEditing(null);
         setEditContent('');
+        setPromptFocused(true);
         return;
       }
       if (isEscape) {
         setMsgEditing(null);
         setEditContent('');
+        setPromptFocused(true);
         return;
       }
       if (isBack) {
@@ -306,14 +324,19 @@ export function App({ manager, config, onRequestClose }: AppProps) {
     if (e.ctrl) {
       const ch = e.name?.toLowerCase();
       if (ch === 's' || ch === 'd') {
+        const toChat = view === 'sidebar';
         setView((v) => (v === 'sidebar' ? 'chat' : 'sidebar'));
+        if (toChat) setPromptFocused(true);
         setChats(manager.listChats());
       } else if (ch === 'g') {
+        const toChat = view === 'settings';
         setView((v) => (v === 'settings' ? 'chat' : 'settings'));
+        if (toChat) setPromptFocused(true);
       } else if (ch === 't') {
         startNewChat();
       } else if (ch === 'c') {
         setView('chat');
+        setPromptFocused(true);
       } else if (ch === 'f') {
         setSearch({ active: true, query: '', results: [], idx: 0 });
       }
@@ -321,7 +344,12 @@ export function App({ manager, config, onRequestClose }: AppProps) {
     }
 
     if (isEscape) {
-      setView('chat');
+      if (view !== 'chat') {
+        setView('chat');
+        setPromptFocused(true);
+      } else if (promptFocused) {
+        setPromptFocused(false);
+      }
       return;
     }
 
@@ -371,7 +399,7 @@ export function App({ manager, config, onRequestClose }: AppProps) {
       return;
     }
 
-    if (input.length === 0 && (inputChar === 'e' || inputChar === 'E')) {
+    if (input.length === 0 && !promptFocused && (inputChar === 'e' || inputChar === 'E')) {
       if (messages.length > 0) {
         setMsgIdx(0);
         setMsgCursor(messages.length - 1);
@@ -387,6 +415,7 @@ export function App({ manager, config, onRequestClose }: AppProps) {
       }
       if (text.length === 0) return;
       setInput('');
+      setPromptFocused(true);
       void sendMessage(text);
       return;
     }
@@ -459,6 +488,7 @@ export function App({ manager, config, onRequestClose }: AppProps) {
     setToolStatus([]);
     setChatScrollTop(null);
     setChats(manager.listChats());
+    setPromptFocused(true);
     setView('chat');
   }
 
@@ -468,6 +498,7 @@ export function App({ manager, config, onRequestClose }: AppProps) {
     setInput('');
     setError(null);
     setChatScrollTop(null);
+    setPromptFocused(true);
     setView('chat');
   }
 
@@ -478,6 +509,7 @@ export function App({ manager, config, onRequestClose }: AppProps) {
     setChatIdx((i) => Math.max(0, Math.min(i, next.length - 1)));
     setMessages(manager.session.messages);
     setChatScrollTop(null);
+    setPromptFocused(true);
     setError(null);
   }
 
@@ -530,7 +562,12 @@ export function App({ manager, config, onRequestClose }: AppProps) {
   }
 
   return (
-    <box flexDirection="column" flexGrow={1}>
+    <box
+      flexDirection="column"
+      flexGrow={1}
+      backgroundColor={color.bg}
+      onMouseDown={() => setPromptFocused(false)}
+    >
       {!(messages.length > 0 || isStreaming || streaming.length > 0 || error) && (
         <TabSwitcher mode={mode} onSelect={setMode} />
       )}
@@ -621,7 +658,12 @@ export function App({ manager, config, onRequestClose }: AppProps) {
           )}
           <box alignItems="center" flexDirection="column" flexShrink={0}>
             {!search.active && msgIdx === null && msgEditing === null && (
-              <InputBox value={input} isStreaming={isStreaming} />
+              <InputBox
+                value={input}
+                isStreaming={isStreaming}
+                focused={promptFocused}
+                onFocus={() => setPromptFocused(true)}
+              />
             )}
           </box>
         </box>
@@ -877,25 +919,47 @@ function EditBar({ value }: { value: string }) {
   );
 }
 
-export function InputBox({ value, isStreaming }: { value: string; isStreaming: boolean }) {
+export function InputBox({
+  value,
+  isStreaming,
+  focused,
+  onFocus,
+}: {
+  value: string;
+  isStreaming: boolean;
+  focused: boolean;
+  onFocus: () => void;
+}) {
   return (
     <box
       height={3}
       width="50%"
-      backgroundColor={isStreaming ? color.warning : color.inputBg}
+      backgroundColor={isStreaming ? color.warning : focused ? color.inputBg : color.tabBarBg}
       flexDirection="row"
       alignItems="center"
       paddingLeft={1}
       shouldFill
+      onMouseDown={(e) => {
+        e.stopPropagation();
+        onFocus();
+      }}
     >
-      {value.length > 0 ? (
-        <text fg={color.fg} attributes={BOLD}>
-          {value}
-          <span attributes={INVERSE}> </span>
-        </text>
+      {focused ? (
+        value.length > 0 ? (
+          <text fg={color.fg} attributes={BOLD}>
+            {value}
+            <span attributes={INVERSE}> </span>
+          </text>
+        ) : (
+          <text fg={color.fg} attributes={DIM}>
+            Ask anything...
+          </text>
+        )
+      ) : value.length > 0 ? (
+        <text fg={color.muted}>{value}</text>
       ) : (
-        <text fg={color.fg} attributes={DIM}>
-          Ask anything...
+        <text fg={color.muted} attributes={DIM}>
+          Click to type
         </text>
       )}
     </box>
