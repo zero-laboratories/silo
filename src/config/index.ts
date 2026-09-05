@@ -49,6 +49,9 @@ export function loadConfig(path?: string): SiloConfig {
         ...((parsed.mcp as SiloConfig['mcp'] | undefined)?.servers ?? {}),
       },
     },
+    web_search: {
+      ...((parsed.web_search as SiloConfig['web_search'] | undefined) ?? {}),
+    },
   };
   validateConfig(config, configFile);
   return config;
@@ -103,5 +106,13 @@ function toTemplateString(config: SiloConfig): string {
     }
     lines.push('');
   }
+
+  lines.push('# Built-in web search (DuckDuckGo Lite). No API key required.');
+  lines.push('#');
+  lines.push('# [web_search]');
+  lines.push('# max_results = 5');
+  lines.push('# region = "wt-wt"');
+  lines.push('# safesearch = -1');
+  lines.push('');
   return lines.join('\n');
 }

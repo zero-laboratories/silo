@@ -1,7 +1,7 @@
 {
   "name": "@zeropbc/silo",
-  "version": "0.9.0",
-  "description": "A minimal, model-agnostic chat app for the terminal with a BYOK philosophy.",
+  "version": "0.9.1",
+  "description": "An open source agent for general intelligence, in your terminal.",
   "type": "module",
   "packageManager": "pnpm@11.25.0",
   "engines": {

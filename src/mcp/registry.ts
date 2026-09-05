@@ -1,5 +1,6 @@
 import type { McpServerConfig } from '../config/type.js';
 import type { ToolDefinition } from '../models/types.js';
+import type { BuiltinTool } from '../tools/types.js';
 import { SiloError } from '../error/index.js';
 import { McpClient } from './client.js';
 
@@ -7,9 +8,17 @@ const NAMESPACE_SEPARATOR = '__';
 
 export class McpRegistry {
   private readonly clients = new Map<string, McpClient>();
+  private readonly builtins = new Map<string, BuiltinTool>();
   private toolsCache: ToolDefinition[] | null = null;
 
-  constructor(private readonly servers: Record<string, McpServerConfig>) {}
+  constructor(
+    private readonly servers: Record<string, McpServerConfig>,
+    builtins: BuiltinTool[] = [],
+  ) {
+    for (const tool of builtins) {
+      this.builtins.set(`${tool.namespace}${NAMESPACE_SEPARATOR}${tool.name}`, tool);
+    }
+  }
 
   serverNames(): string[] {
     return Object.keys(this.servers);
@@ -18,6 +27,13 @@ export class McpRegistry {
   async listTools(): Promise<ToolDefinition[]> {
     if (this.toolsCache !== null) return this.toolsCache;
     const tools: ToolDefinition[] = [];
+    for (const tool of this.builtins.values()) {
+      tools.push({
+        name: `${tool.namespace}${NAMESPACE_SEPARATOR}${tool.name}`,
+        description: tool.description,
+        inputSchema: tool.inputSchema,
+      });
+    }
     for (const name of this.serverNames()) {
       const client = await this.clientFor(name);
       if (!client) continue;
@@ -46,6 +62,11 @@ export class McpRegistry {
     }
     const serverName = name.slice(0, sep);
     const toolName = name.slice(sep + NAMESPACE_SEPARATOR.length);
+
+    const builtin = this.builtins.get(name);
+    if (builtin) {
+      return builtin.run(args);
+    }
     if (!this.servers[serverName]) {
       throw new SiloError(`Unknown MCP tool "${name}".`);
     }

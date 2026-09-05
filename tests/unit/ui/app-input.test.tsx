@@ -54,6 +54,75 @@ describe('App keyboard input', () => {
       store.close();
     }
   });
+
+  it('pastes bracketed text from the terminal into the prompt', async () => {
+    const { Store } = await import('../../../src/storage/database.js');
+    const store: Store = new Store(join(mkdtempSync(join(tmpdir(), 'silo-test-')), 'test.db'));
+    const manager = new ChatManager(store, provider, model, {}, models);
+    const config = makeConfig();
+
+    const setup = await testRender(
+      <App manager={manager} config={config} />,
+      { width: 80, height: 24 },
+    );
+    try {
+      await setup.waitForFrame((frame) => frame.includes('Ask anything...'));
+      setup.mockInput.pressKey('a');
+      setup.mockInput.pasteBracketedText('bc def');
+      const frame = await setup.waitForFrame((f) => f.includes('abc def'));
+      expect(frame).toContain('abc def');
+    } finally {
+      await setup.renderer.destroy();
+      store.close();
+    }
+  });
+
+  it('cuts the prompt with Ctrl+Shift+X (copy then clear)', async () => {
+    const { Store } = await import('../../../src/storage/database.js');
+    const store: Store = new Store(join(mkdtempSync(join(tmpdir(), 'silo-test-')), 'test.db'));
+    const manager = new ChatManager(store, provider, model, {}, models);
+    const config = makeConfig();
+
+    const setup = await testRender(
+      <App manager={manager} config={config} />,
+      { width: 80, height: 24, kittyKeyboard: true },
+    );
+    try {
+      await setup.waitForFrame((frame) => frame.includes('Ask anything...'));
+      for (const ch of ['a', 'b', 'c']) setup.mockInput.pressKey(ch);
+      await setup.waitForFrame((frame) => frame.includes('abc'));
+      setup.mockInput.pressKey('x', { ctrl: true, shift: true });
+      await setup.waitForFrame((frame) => frame.includes('Ask anything...') && !frame.includes('abc'));
+      const frame = await setup.waitForFrame((f) => f.includes('Ask anything...'));
+      expect(frame).not.toContain('abc');
+    } finally {
+      await setup.renderer.destroy();
+      store.close();
+    }
+  });
+
+  it('keeps the prompt intact on Ctrl+Shift+C copy', async () => {
+    const { Store } = await import('../../../src/storage/database.js');
+    const store: Store = new Store(join(mkdtempSync(join(tmpdir(), 'silo-test-')), 'test.db'));
+    const manager = new ChatManager(store, provider, model, {}, models);
+    const config = makeConfig();
+
+    const setup = await testRender(
+      <App manager={manager} config={config} />,
+      { width: 80, height: 24, kittyKeyboard: true },
+    );
+    try {
+      await setup.waitForFrame((frame) => frame.includes('Ask anything...'));
+      for (const ch of ['a', 'b', 'c']) setup.mockInput.pressKey(ch);
+      await setup.waitForFrame((frame) => frame.includes('abc'));
+      setup.mockInput.pressKey('c', { ctrl: true, shift: true });
+      const frame = await setup.waitForFrame((f) => f.includes('abc'));
+      expect(frame).toContain('abc');
+    } finally {
+      await setup.renderer.destroy();
+      store.close();
+    }
+  });
 });
 
 describe('App tool status', () => {

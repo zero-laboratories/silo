@@ -492,6 +492,44 @@ API (OpenAI, OpenRouter). Anthropic and Gemini providers ignore tools for now.
   conversation survives.
 - Tool calls and results are transient — never written to the database.
 
+### 4.7 Web Search (Built-in)
+
+**Responsibility:** Give the model live web search without a dedicated MCP
+server and without any API key. Silo uses the DuckDuckGo **Lite** endpoint,
+porting the scraper technique from [ddg-cli](https://github.com/kr4phy/ddg-cli) into
+in-process TypeScript.
+
+**Config (`config.toml`):** web search is **on by default** and needs no key.
+
+```toml
+[web_search]
+max_results = 5      # optional, default 5 (max 10)
+region = "wt-wt"     # optional DDG region code, default wt-wt (worldwide)
+safesearch = -1      # optional: -2 off, -1 moderate, 1 strict
+# enabled = false    # optional: disable the tool entirely
+```
+
+**Components:**
+- `src/tools/ddg.ts` — `ddgLiteSearch()` fetches `lite.duckduckgo.com/lite/`
+  (browser User-Agent, `kl` region + `kp` safesearch params), parses
+  `result-link` anchors and `result-snippet` cells (stripping tags, decoding
+  entities, resolving DuckDuckGo `uddg` redirects to the real URL), and detects
+  captcha/anomaly walls so failures are friendly, not silent. `ddgSearchTool()`
+  wraps it as a `builtin__web_search` tool with an injectable `fetch` for tests.
+- `src/mcp/registry.ts` — `McpRegistry` accepts a list of in-process
+  `BuiltinTool`s alongside external servers; they advertise under the
+  `builtin` namespace and route through the exact same tool loop.
+- `src/cli.ts` — wires the built-in tool into the registry based on
+  `config.web_search`.
+
+**Guarantees:**
+- No API key, no account — the model gets search on every provider (OpenAI,
+  OpenRouter, Anthropic, Gemini) through the shared tool-call loop.
+- Best-effort: DuckDuckGo may occasionally rate-limit or captcha-block (common
+  from datacenter/VPS IPs) or change markup; failures surface as a friendly
+  `E:` message and are fed back to the model as `Error: …` text.
+- Results are transient like all tool output — never written to the database.
+
 ---
 
 ## 5. User Workflows

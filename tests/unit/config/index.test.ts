@@ -81,4 +81,39 @@ describe('loadConfig', () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it('parses the web_search section', () => {
+    withConfig(
+      '[general]\ndefault_model = "openai"\n\n[web_search]\nenabled = true\nmax_results = 3\nregion = "us-en"\nsafesearch = -2\n',
+      (path) => {
+        const cfg = loadConfig(path);
+        expect(cfg.web_search).toEqual({
+          enabled: true,
+          max_results: 3,
+          region: 'us-en',
+          safesearch: -2,
+        });
+      },
+    );
+  });
+
+  it('defaults web_search to nothing configured', () => {
+    withConfig('[general]\ndefault_model = "openai"\n', (path) => {
+      const cfg = loadConfig(path);
+      expect(cfg.web_search).toEqual({});
+    });
+  });
+
+  it('documents web_search in the template', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'silo-cfg-'));
+    const path = join(dir, 'new.toml');
+    try {
+      loadConfig(path);
+      const raw = readFileSync(path, 'utf8');
+      expect(raw).toContain('[web_search]');
+      expect(raw).toContain('region = "wt-wt"');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });

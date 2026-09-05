@@ -5,7 +5,7 @@ import { InputBox } from '../../../src/ui/components/App.js';
 
 describe('InputBox', () => {
   it('renders placeholder centered in the middle line of a 3-row box', async () => {
-    const setup = await testRender(<InputBox value="" isStreaming={false} />, { width: 40, height: 10 });
+    const setup = await testRender(<InputBox value="" isStreaming={false} focused onFocus={() => {}} />, { width: 40, height: 10 });
     try {
       await setup.waitForFrame((frame) => frame.includes('Ask anything...'));
       await setup.waitForVisualIdle();
@@ -19,7 +19,7 @@ describe('InputBox', () => {
   });
 
   it('renders typed value is left-aligned with 1-char padding', async () => {
-    const setup = await testRender(<InputBox value="hello" isStreaming={false} />, { width: 40, height: 10 });
+    const setup = await testRender(<InputBox value="hello" isStreaming={false} focused onFocus={() => {}} />, { width: 40, height: 10 });
     try {
       await setup.waitForFrame((frame) => frame.includes('hello'));
       await setup.waitForVisualIdle();

@@ -522,4 +522,41 @@ describe('ChatManager MCP tool loop', () => {
     expect(await collect(manager)).toBe('plain reply');
     store.close();
   });
+
+  it('runs builtin tools through a real registry', async () => {
+    const { McpRegistry } = await import('../../../src/mcp/registry.js');
+    const provider: LLMProvider = {
+      async *sendMessage() {
+        yield {
+          type: 'tool',
+          tool: { id: 'call_1', name: 'builtin__web_search', arguments: '{"query":"foo"}' },
+        };
+      },
+      getName: () => 'test',
+      getDefaultModel: () => 'test-model',
+    };
+    const registry = new McpRegistry(
+      {},
+      [
+        {
+          namespace: 'builtin',
+          name: 'web_search',
+          description: 'Search',
+          inputSchema: { type: 'object' },
+          run: async () => 'Silo docs: https://example.com',
+        },
+      ],
+    );
+    const { manager, store } = await makeManager(models, 'claude', provider);
+    (manager as unknown as { mcp: McpRegistry | null }).mcp = registry;
+
+    let saw = '';
+    for await (const chunk of manager.send('hi')) {
+      if (chunk.type === 'status' && chunk.status) saw += `${chunk.status}\n`;
+    }
+    expect(saw).toContain('Running builtin · web_search…');
+    expect(saw).toContain('Silo docs: https://example.com');
+    expect(manager.session.messages.filter((m) => m.role === 'tool')).toHaveLength(0);
+    store.close();
+  });
 });
