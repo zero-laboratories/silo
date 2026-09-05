@@ -15,6 +15,12 @@ export interface McpServerConfig {
   enabled?: boolean;
 }
 
+export interface WebSearchConfig {
+  enabled?: boolean;
+  api_key_env?: string;
+  max_results?: number;
+}
+
 export interface SiloConfig {
   general: {
     default_model: string;
@@ -25,4 +31,5 @@ export interface SiloConfig {
   mcp?: {
     servers?: Record<string, McpServerConfig>;
   };
+  web_search?: WebSearchConfig;
 }

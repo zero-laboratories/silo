@@ -3,6 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import type { McpServerConfig } from '../../../src/config/type.js';
 import { McpRegistry } from '../../../src/mcp/registry.js';
+import type { BuiltinTool } from '../../../src/tools/types.js';
+import { SiloError } from '../../../src/error/index.js';
 
 const fixturePath = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'fixtures', 'mcp-server.mjs');
 
@@ -10,6 +12,16 @@ const fixtureConfig: McpServerConfig = {
   command: process.execPath,
   args: [fixturePath],
 };
+
+function echoTool(response: string): BuiltinTool {
+  return {
+    namespace: 'builtin',
+    name: 'echo',
+    description: 'Echoes input',
+    inputSchema: { type: 'object' },
+    run: async () => response,
+  };
+}
 
 describe('McpRegistry', () => {
   it('aggregates tools across servers with namespaced names', async () => {
@@ -60,6 +72,45 @@ describe('McpRegistry', () => {
       broken: { command: '/no/such/binary' },
     });
     await expect(registry.listTools()).rejects.toThrow(/MCP server "broken"/);
+    await registry.closeAll();
+  });
+
+  it('advertises builtin tools alongside server tools', async () => {
+    const registry = new McpRegistry({ web: fixtureConfig }, [echoTool('pong')]);
+    const tools = await registry.listTools();
+    expect(tools.map((t) => t.name)).toEqual([
+      'builtin__echo',
+      'web__weather',
+      'web__ping',
+    ]);
+    await registry.closeAll();
+  });
+
+  it('routes builtin tool calls to the in-process handler', async () => {
+    const registry = new McpRegistry({}, [echoTool('builtin says hi')]);
+    const result = await registry.callTool('builtin__echo', { anything: true });
+    expect(result).toBe('builtin says hi');
+    await registry.closeAll();
+  });
+
+  it('rejects unknown builtin calls without reaching servers', async () => {
+    const registry = new McpRegistry({}, [echoTool('x')]);
+    await expect(registry.callTool('builtin__nope', {})).rejects.toThrow(/unknown MCP tool/i);
+    await registry.closeAll();
+  });
+
+  it('propagates builtin run errors with an Error prefix', async () => {
+    const failing: BuiltinTool = {
+      namespace: 'builtin',
+      name: 'fail',
+      description: 'fails',
+      inputSchema: { type: 'object' },
+      run: async () => {
+        throw new SiloError('kaboom');
+      },
+    };
+    const registry = new McpRegistry({}, [failing]);
+    await expect(registry.callTool('builtin__fail', {})).rejects.toThrow(/kaboom/);
     await registry.closeAll();
   });
 });

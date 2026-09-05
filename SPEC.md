@@ -492,6 +492,40 @@ API (OpenAI, OpenRouter). Anthropic and Gemini providers ignore tools for now.
   conversation survives.
 - Tool calls and results are transient — never written to the database.
 
+### 4.7 Web Search (Built-in)
+
+**Responsibility:** Give the model live web search without a dedicated MCP
+server, using Tavily.
+
+**Config (`config.toml`):** the built-in `web_search` tool becomes available
+to the model automatically when a Tavily API key is present in the
+environment. Keys are referenced by env var, never stored in config.
+
+```toml
+[web_search]
+api_key_env = "TAVILY_API_KEY"   # required to enable the tool
+max_results = 5                   # optional, default 5
+# enabled = false                 # optional: disable even with a key set
+```
+
+**Components:**
+- `src/tools/tavily.ts` — `webSearchTool(config)` returns a built-in tool
+  (`builtin__web_search`) when a key is configured; `searchWeb()` calls the
+  Tavily Search API (POST `https://api.tavily.com/search`, injectable `fetch`
+  for tests) and formats results as title/URL/snippet for the model.
+- `src/mcp/registry.ts` — `McpRegistry` accepts a list of in-process
+  `BuiltinTool`s alongside external servers; they advertise under the
+  `builtin` namespace and route through the exact same tool loop.
+- `src/cli.ts` — wires the built-in tool into the registry based on
+  `config.web_search`.
+
+**Guarantees:**
+- No Tavily key → tool is not advertised; the model never sees it and no
+  request is made.
+- Search works across every provider (OpenAI, OpenRouter, Anthropic, Gemini)
+  because it goes through the shared tool-call loop.
+- Results are transient like all tool output — never written to the database.
+
 ---
 
 ## 5. User Workflows

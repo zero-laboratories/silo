@@ -81,4 +81,38 @@ describe('loadConfig', () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it('parses the web_search section', () => {
+    withConfig(
+      '[general]\ndefault_model = "openai"\n\n[web_search]\nenabled = true\napi_key_env = "TAVILY_API_KEY"\nmax_results = 3\n',
+      (path) => {
+        const cfg = loadConfig(path);
+        expect(cfg.web_search).toEqual({
+          enabled: true,
+          api_key_env: 'TAVILY_API_KEY',
+          max_results: 3,
+        });
+      },
+    );
+  });
+
+  it('defaults web_search to nothing configured', () => {
+    withConfig('[general]\ndefault_model = "openai"\n', (path) => {
+      const cfg = loadConfig(path);
+      expect(cfg.web_search).toEqual({});
+    });
+  });
+
+  it('documents web_search in the template', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'silo-cfg-'));
+    const path = join(dir, 'new.toml');
+    try {
+      loadConfig(path);
+      const raw = readFileSync(path, 'utf8');
+      expect(raw).toContain('[web_search]');
+      expect(raw).toContain('TAVILY_API_KEY');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
