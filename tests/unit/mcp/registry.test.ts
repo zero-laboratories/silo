@@ -99,6 +99,21 @@ describe('McpRegistry', () => {
     await registry.closeAll();
   });
 
+  it('accepts bare builtin names without the namespace prefix', async () => {
+    const registry = new McpRegistry({}, [echoTool('bare works')]);
+    const result = await registry.callTool('echo', {});
+    expect(result).toBe('bare works');
+    await registry.closeAll();
+  });
+
+  it('lists available tools when a call name is unknown', async () => {
+    const registry = new McpRegistry({}, [echoTool('x')]);
+    await expect(registry.callTool('exec', {})).rejects.toThrow(
+      /Unknown MCP tool "exec".*Available tools: builtin__echo/,
+    );
+    await registry.closeAll();
+  });
+
   it('propagates builtin run errors with an Error prefix', async () => {
     const failing: BuiltinTool = {
       namespace: 'builtin',

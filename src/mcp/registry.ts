@@ -56,19 +56,24 @@ export class McpRegistry {
   }
 
   async callTool(name: string, args: unknown): Promise<string> {
+    const builtin =
+      this.builtins.get(name) ??
+      (name.indexOf(NAMESPACE_SEPARATOR) >= 0
+        ? undefined
+        : this.builtins.get(`builtin${NAMESPACE_SEPARATOR}${name}`));
+    if (builtin) {
+      return builtin.run(args);
+    }
+
     const sep = name.indexOf(NAMESPACE_SEPARATOR);
     if (sep <= 0) {
-      throw new SiloError(`Unknown MCP tool "${name}".`);
+      throw new SiloError(this.unknownToolMessage(name));
     }
     const serverName = name.slice(0, sep);
     const toolName = name.slice(sep + NAMESPACE_SEPARATOR.length);
 
-    const builtin = this.builtins.get(name);
-    if (builtin) {
-      return builtin.run(args);
-    }
     if (!this.servers[serverName]) {
-      throw new SiloError(`Unknown MCP tool "${name}".`);
+      throw new SiloError(this.unknownToolMessage(name));
     }
     if (this.servers[serverName].enabled === false) {
       throw new SiloError(`MCP server "${serverName}" is disabled.`);
@@ -84,6 +89,18 @@ export class McpRegistry {
     return result.isError
       ? 'Error: tool returned an empty result.'
       : 'Tool produced no text output.';
+  }
+
+  private unknownToolMessage(name: string): string {
+    const names: string[] = [...this.builtins.keys()];
+    if (this.toolsCache) {
+      for (const t of this.toolsCache) {
+        if (!names.includes(t.name)) names.push(t.name);
+      }
+    }
+    const hint =
+      names.length > 0 ? ` Available tools: ${names.join(', ')}.` : '';
+    return `Unknown MCP tool "${name}".${hint}`;
   }
 
   async closeAll(): Promise<void> {
